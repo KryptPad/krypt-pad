@@ -1,12 +1,11 @@
 import Vue from 'vue'
 import axios from 'axios'
 
-// Vue Material
-import VueMaterial from 'vue-material'
-import 'vue-material/dist/vue-material.min.css'
-import 'vue-material/dist/theme/default-dark.css' 
- 
-Vue.use(VueMaterial)
+import Vuetify from 'vuetify'
+
+Vue.use(Vuetify)
+
+import 'vuetify/dist/vuetify.min.css'
 
 import App from './App'
 import router from './router'
@@ -21,5 +20,8 @@ new Vue({
   components: { App },
   router,
   store,
+  data: () => ({
+    drawer: true
+  }),
   template: '<App/>'
 }).$mount('#app')
