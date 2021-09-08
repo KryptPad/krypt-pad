@@ -1,5 +1,5 @@
-import "vuetify/styles";
-import {createApp} from "vue";
+//import "vuetify/styles";
+import { createApp } from "vue";
 import { createVuetify } from "vuetify";
 import home from "../components/home.vue";
 

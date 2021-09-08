@@ -7,7 +7,7 @@ module.exports = {
     // Don't extract css to it's own file
     css: { extract: false },
     pages: {
-        "index": "app/pages/index.js"
+        "index": "src/pages/index.js"
     },
     runtimeCompiler: true
 }
