@@ -1,35 +1,41 @@
 {
   "name": "krypt-pad",
-  "version": "3.0.0",
-  "description": "Krypt Pad Encryption Client",
-  "main": "main.js",
+  "version": "0.1.0",
+  "private": false,
+  "description": "A secure note manager with AES256 bit encryption.",
+  "author": "Krypt Pad",
+  "main": "src/background.js",
+  "scripts": {
+    "lint": "vue-cli-service lint",
+    "electron:build": "vue-cli-service electron:build",
+    "electron:serve": "vue-cli-service electron:serve",
+    "postinstall": "electron-builder install-app-deps",
+    "postuninstall": "electron-builder install-app-deps",
+    "start": "electron ."
+  },
   "dependencies": {
-    "vue": "^3.2.10",
-    "vuetify": "^3.0.0-alpha.11"
+    "@mdi/font": "^7.2.96",
+    "core-js": "^3.30.0",
+    "electron-window-state": "^5.0.3",
+    "vue": "^3.2.47",
+    "vue-router": "^4.1.6",
+    "vuetify": "^3.1.13"
   },
   "devDependencies": {
-    "@vue/cli": "^4.5.13",
-    "@vue/cli-service": "^4.5.13",
-    "@vue/compiler-sfc": "^3.2.10",
-    "electron": "^14.0.0",
-    "sass-loader": "^12.1.0"
+    "@babel/core": "^7.21.4",
+    "@babel/eslint-parser": "^7.21.3",
+    "@vue/cli": "^5.0.8",
+    "@vue/cli-plugin-babel": "~5.0.8",
+    "@vue/cli-plugin-eslint": "~5.0.8",
+    "@vue/cli-service": "~5.0.8",
+    "electron": "^24.2.0",
+    "electron-builder": "^23.6.0",
+    "electron-devtools-installer": "^3.1.0",
+    "eslint": "^8.38.0",
+    "eslint-plugin-vue": "^9.10.0",
+    "sass": "^1.61.0",
+    "sass-loader": "^13.2.2",
+    "vue-cli-plugin-electron-builder": "~2.1.1"
   },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "electron .",
-    "watch": "vue-cli-service build --mode development --watch"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/KryptPad/krypt-pad.git"
-  },
-  "keywords": [
-    "Encryption"
-  ],
-  "author": "Neptune Century Studios",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/KryptPad/krypt-pad/issues"
-  },
-  "homepage": "https://github.com/KryptPad/krypt-pad#readme"
+  "license": "MIT"
 }
