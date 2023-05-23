@@ -68,14 +68,14 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 $title-bar-height: 30px;
-$dark-title-bar-blur-color: rgb(var(--v-theme-on-surface-variant));
-$dark-title-bar-focus-color: rgb(77, 77, 77);
-$light-title-bar-blur-color: rgb(var(--v-theme-on-surface-variant));
-$light-title-bar-focus-color: rgb(202, 202, 202);
+$dark-title-bar-blur-color: rgb(var(--v-theme-surface));
+$dark-title-bar-focus-color: rgb(var(--v-theme-surface));
+$light-title-bar-blur-color: rgb(var(--v-theme-surface));
+$light-title-bar-focus-color: rgb(var(--v-theme-surface));
 
 $dark-button-hover-color: #555;
 $light-button-hover-color: #cccccc;
-$button-hover-close-color: #db5252;
+$button-hover-close-color: #da2828;
 
 $transition: background-color 200ms ease-in-out;
 
@@ -84,6 +84,7 @@ $transition: background-color 200ms ease-in-out;
     -webkit-user-select: none;
     webkit-user-select: none;
     -webkit-app-region: drag;
+    border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
 /* Title bar buttons */
@@ -119,10 +120,12 @@ $transition: background-color 200ms ease-in-out;
 
 .v-theme--dark .title-bar {
     background-color: $dark-title-bar-blur-color;
+    color: rgb(var(--v-theme-on-surface));
 }
 
 .v-theme--light .title-bar {
     background-color: $light-title-bar-blur-color;
+    color: rgb(var(--v-theme-on-surface));
 }
 
 .v-theme--dark .title-bar.focused {
@@ -131,5 +134,6 @@ $transition: background-color 200ms ease-in-out;
 
 .v-theme--light .title-bar.focused {
     background-color: $light-title-bar-focus-color;
+    
 }
 </style>
