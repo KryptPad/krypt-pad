@@ -1,5 +1,5 @@
 <template>
-    <div class="title-bar d-flex align-center" :class="{ 'focused': isFocused }">
+    <div class="title-bar d-flex align-center w-100" :class="{ 'focused': isFocused }">
         <span class="ml-3">{{ title }}</span>
 
         <div class="ml-auto">
