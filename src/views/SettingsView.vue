@@ -16,9 +16,8 @@
 import { watch, ref } from 'vue';
 import { useTheme } from 'vuetify/lib/framework.mjs';
 
-
-const lightMode = ref(false);
 const theme = useTheme();
+const lightMode = ref(!theme.global.current.value.dark);
 
 watch(lightMode, ()=>{
     console.log(theme)

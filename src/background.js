@@ -25,7 +25,7 @@ async function createWindow() {
     defaultHeight: 600
   });
 
-  console.log(mainWindowState)
+  console.log(path.join(__static, "safe.ico"))
 
   // Create the browser window.
   win = new BrowserWindow({
@@ -35,6 +35,7 @@ async function createWindow() {
     height: mainWindowState.height,
     isMaximized: mainWindowState.isMaximized,
     titleBarStyle: "hidden",
+    icon: path.join(__static, "safe.ico"),
     webPreferences: {
 
       // Use pluginOptions.nodeIntegration, leave this alone

@@ -1,18 +1,15 @@
 <template>
-  <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div v-if="kpAPI.fileOpened">
+    Home
   </div>
+
+  <hello-world v-else></hello-world>
 </template>
 
-<script>
-// @ is an alias to /src
-import HelloWorld from '@/components/HelloWorld.vue'
+<script setup>
+import { inject } from 'vue';
+import HelloWorld from '@/components/HelloWorld.vue';
 
-export default {
-  name: 'HomeView',
-  components: {
-    HelloWorld
-  }
-}
+const kpAPI = inject("kpAPI");
+
 </script>

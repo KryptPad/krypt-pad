@@ -1,6 +1,17 @@
 <template>
     <div class="title-bar d-flex align-center w-100" :class="{ 'focused': isFocused }">
-        <span class="ml-3">{{ title }}</span>
+        <template v-if="$slots.icon">
+            <div class="ml-2 mr-2 icon-wrapper"><slot name="icon"></slot></div>
+        </template>
+
+        <div>{{ title }}</div>
+
+        <div class="ml-3 title-bar-menu">
+            <slot name="menu">
+
+            </slot>
+        </div>
+
 
         <div class="ml-auto">
             <button class="title-bar-button title-bar-button-minimize" type="button" @click="minimize"><v-icon
@@ -24,7 +35,7 @@ const isMaximized = ref(false);
 const isFocused = ref(true);
 
 defineProps({
-    title: { type: String, default: "Krypt Pad Lite" }
+    title: String
 });
 
 // Window button handlers
@@ -66,8 +77,8 @@ onMounted(() => {
 
 </script>
 
-<style lang="scss" scoped>
-$title-bar-height: 30px;
+<style lang="scss">
+$title-bar-height: 2rem;
 $dark-title-bar-blur-color: rgb(var(--v-theme-surface));
 $dark-title-bar-focus-color: rgb(var(--v-theme-surface));
 $light-title-bar-blur-color: rgb(var(--v-theme-surface));
@@ -85,6 +96,18 @@ $transition: background-color 200ms ease-in-out;
     webkit-user-select: none;
     -webkit-app-region: drag;
     border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.title-bar .title-bar-menu {
+    -webkit-app-region: no-drag;
+}
+
+.title-bar .icon-wrapper {
+    line-height: $title-bar-height;
+}
+
+.title-bar .icon-wrapper > img {
+    vertical-align: middle;
 }
 
 /* Title bar buttons */
@@ -134,6 +157,6 @@ $transition: background-color 200ms ease-in-out;
 
 .v-theme--light .title-bar.focused {
     background-color: $light-title-bar-focus-color;
-    
+
 }
 </style>
