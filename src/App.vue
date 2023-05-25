@@ -6,7 +6,7 @@
       <title-bar title="Krypt Pad">
 
         <template v-slot:icon>
-          <img src="./assets/safe.svg" alt="Logo" style="height: 1.8rem" />
+          <img src="./assets/safe.svg" alt="Logo" style="height: 24px" />
         </template>
 
         <!-- Menu items -->
@@ -38,10 +38,11 @@
         <v-list nav class="d-flex flex-column h-100">
           <v-tooltip text="Home">
             <template v-slot:activator="{ props }">
-              <v-list-item v-bind="props" prepend-icon="mdi-home-city" title="Home" value="home" :to="{ name: 'home' }"></v-list-item>
+              <v-list-item v-bind="props" prepend-icon="mdi-home-city" title="Home" value="home"
+                :to="{ name: 'home' }"></v-list-item>
             </template>
           </v-tooltip>
-          
+
 
           <v-tooltip text="Starred">
             <template v-slot:activator="{ props }">
@@ -64,7 +65,7 @@
 
       <!-- Main content -->
       <v-main :scrollable="true">
-        <v-container class="h-100 align-start d-flex">
+        <v-container class="h-100 align-start d-flex flex-column">
           <router-view>
           </router-view>
 
@@ -77,9 +78,9 @@
 </template>
 
 <script setup>
-import { provide } from 'vue';
 import TitleBar from './components/TitleBar.vue';
-import { reactive } from 'vue';
+import { reactive, provide } from 'vue';
+import { Category, Profile } from './krypt-pad-format';
 
 const kpAPI = reactive({
   fileOpened: false,
@@ -98,8 +99,12 @@ const kpAPI = reactive({
 
     // Set fileOpen flag
     kpAPI.fileOpened = true;
+    // Create new profile object
+    kpAPI.profile = new Profile();
+    kpAPI.profile.categories.push(new Category("Banks"));
+    console.log("fdsfsdf")
   }
-})
+});
 
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);
