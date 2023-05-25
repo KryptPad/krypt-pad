@@ -21,21 +21,56 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onMaximize: (callback) => { _onMaximize = callback },
     onBlur: (callback) => { _onBlur = callback },
     onFocus: (callback) => { _onFocus = callback },
-    getIsMaximized:() => {        return _isMaximized;    }
+    getIsMaximized: () => { return _isMaximized; },
+    /**
+     * Shows the open file dialog.
+     * @returns Promise
+     */
+    showOpenFileDialogAsync: async () => {
+        // Send message to main process to open the dialog.
+        ipcRenderer.send('show-open-file-dialog');
+        // Create a promise that waits for the message coming back that the user has selected a file
+        return new Promise((resolve)=>{
+            ipcRenderer.once('file-selected', (e, response) =>{
+                console.log(e, response);
+                resolve(response);
+            });
+        }); 
+        
+    },
+    /**
+     * Shows the save file dialog
+     * @returns Promise
+     */
+    showSaveFileDialogAsync: async () => {
+        // Send message to main process to open the dialog.
+        ipcRenderer.send('show-save-file-dialog');
+        // Create a promise that waits for the message coming back that the user has selected a file
+        return new Promise((resolve)=>{
+            ipcRenderer.once('file-selected', (e, response) =>{
+                console.log(e, response);
+                resolve(response);
+            });
+        }); 
+        
+    },
+    readFileAsync: (fileName) => {
+        ipcRenderer.send('read-file', fileName);
+    }
 })
 
 // When the window is unmaximized, an event in the main process is raised that sends a message
 // via IPC. This handler processes that message and raises a registered callback from the vue app.
-ipcRenderer.on('unmaximize', () => { 
+ipcRenderer.on('unmaximize', () => {
     _isMaximized = false;
     _onUnmaximize?.()
- })
+})
 
 // When the window is maximized, an event in the main process is raised that sends a message
 // via IPC. This handler processes that message and raises a registered callback from the vue app.
 ipcRenderer.on('maximize', () => {
-     _isMaximized = true;
-      _onMaximize?.() 
+    _isMaximized = true;
+    _onMaximize?.()
 })
 
 // When the window loses focus, blur is fired from main process. This handler invokes a callback.
@@ -43,6 +78,8 @@ ipcRenderer.on('blur', () => { _onBlur?.() })
 
 // When the window loses focus, blur is fired from main process. This handler invokes a callback.
 ipcRenderer.on('focus', () => { _onFocus?.() })
+
+
 
 
 console.log("preload.js loaded ok")

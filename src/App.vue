@@ -88,11 +88,13 @@ const kpAPI = reactive({
   /**
   * Create a new file
   */
-  createNewFile() {
+  async createNewFileAsync() {
     // If there is already a file open, prompt the user if they are sure they want to create a new file
 
     // Open save dialog to allow user to save a new file
-
+    const selectedFile = await window.electronAPI.showSaveFileDialogAsync();
+    console.log(selectedFile)
+    window.electronAPI.readFileAsync();
     // Clear out the old file
 
     // Prompt for new passphrase
@@ -103,6 +105,18 @@ const kpAPI = reactive({
     kpAPI.profile = new Profile();
     kpAPI.profile.categories.push(new Category("Banks"));
     console.log("fdsfsdf")
+  },
+  /**
+   * Opens an existing file
+   */
+  async openExistingFileAsync(){
+    // Show the open file dialog
+    const selectedFile = await window.electronAPI.showOpenFileDialogAsync();
+    console.log(selectedFile)
+    if (!selectedFile.canceled){
+      window.electronAPI.readFileAsync(selectedFile.filePaths[0]);
+    }
+    
   }
 });
 
@@ -114,7 +128,7 @@ const menuItems = [
   {
     title: "File",
     items: [
-      { title: "Create New File", handler: kpAPI.createNewFile },
+      { title: "Create New File", handler: kpAPI.createNewFileAsync },
       { title: "Import KDF File" }
     ]
   }
@@ -123,19 +137,9 @@ const menuItems = [
 </script>
 
 <style lang="scss">
-// With custom title bar, we need to make some CSS adjustments
+
 html {
-  overflow: auto;
+  overflow: hidden;
 }
 
-#app {
-  height: 100%;
-}
-
-textarea {
-  resize: none;
-  outline: none;
-  padding: 1rem;
-  color: #fff;
-}
 </style>

@@ -1,12 +1,19 @@
 'use strict'
 
-const { app, protocol, BrowserWindow, ipcMain } = require('electron')
+const { app, protocol, BrowserWindow, ipcMain, dialog } = require('electron')
 const windowStateKeeper = require('electron-window-state')
 const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer')
 const path = require('path')
 const { createProtocol } = require('vue-cli-plugin-electron-builder/lib')
+const { createReadStream } = require('fs')
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
+
+// Filters for open/save file dialog
+const filters = [
+  { name: 'Krypt Pad File', extensions: ['kpf'] },
+  { name: 'All Files', extensions: ['*'] }
+];
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -137,6 +144,48 @@ app.whenReady().then(async () => {
     // Minimize or restore the window
     win.close()
 
+  });
+
+  // Listen for message to show the open file dialog
+  ipcMain.on('show-open-file-dialog', async (e) => {
+
+    const options = {
+      properties: ['openFile'],
+      filters,
+    };
+
+    const response = await dialog.showOpenDialog(options);
+    win.webContents.send("file-selected", response);
+
+  });
+
+  // Listen for message to show the save file dialog
+  ipcMain.on('show-save-file-dialog', async (e) => {
+
+    const options = {
+      properties: ['showOverwriteConfirmation'],
+      filters,
+    };
+
+    const response = await dialog.showSaveDialog(options);
+    win.webContents.send("file-selected", response);
+    
+  });
+
+  ipcMain.on('read-file', async (e, fileName) => {
+    
+    const fileStream = createReadStream(fileName);
+    fileStream.on('readable', () => {
+      let chunk;
+      while( null !== ( chunk = fileStream.read(16) ) ) {
+          // Handle the chunk
+          console.log("Bytes:", chunk);
+      }
+      
+      
+    });
+    
+    
   });
 
   // function validateSender(frame) {

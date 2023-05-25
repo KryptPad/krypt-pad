@@ -8,8 +8,8 @@
     </div>
 
     <div class="mt-3">
-      <v-btn color="primary" class="mr-3" @click="kpAPI.createNewFile">Create New File</v-btn>
-      <v-btn>Open File</v-btn>
+      <v-btn color="primary" class="mr-3" @click="kpAPI.createNewFileAsync">Create New File</v-btn>
+      <v-btn @click="kpAPI.openExistingFileAsync">Open File</v-btn>
     </div>
   </div>
 </template>
@@ -17,6 +17,7 @@
 <script setup>
 import { inject } from 'vue';
 
+// Inject the global app API
 const kpAPI = inject("kpAPI");
 
 </script>
