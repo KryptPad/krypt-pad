@@ -5,7 +5,8 @@ const windowStateKeeper = require('electron-window-state')
 const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer')
 const path = require('path')
 const { createProtocol } = require('vue-cli-plugin-electron-builder/lib')
-const { createReadStream } = require('fs')
+const { readFile } = require('fs')
+const { encrypt, decrypt } = require('./crypto')
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -58,7 +59,7 @@ async function createWindow() {
   // and restore the maximized or full screen state
   mainWindowState.manage(win);
 
-  if (mainWindowState.isMaximized){
+  if (mainWindowState.isMaximized) {
     win.webContents.send("maximize")
   }
 
@@ -169,23 +170,34 @@ app.whenReady().then(async () => {
 
     const response = await dialog.showSaveDialog(options);
     win.webContents.send("file-selected", response);
-    
+
   });
 
   ipcMain.on('read-file', async (e, fileName) => {
-    
-    const fileStream = createReadStream(fileName);
-    fileStream.on('readable', () => {
-      let chunk;
-      while( null !== ( chunk = fileStream.read(16) ) ) {
-          // Handle the chunk
-          console.log("Bytes:", chunk);
-      }
-      
-      
+
+    const fileContents = readFile(fileName, (err, data) => {
+      // Encrypt
+      const hash = encrypt(data, "ThisIsMyPassword");
+      console.log(hash);
+
+      // Test decryption
+      const text = decrypt(hash, "ThisIsMyPassword");
+      console.log(text);
     });
-    
-    
+
+
+    // const fileStream = createReadStream(fileName);
+    // fileStream.on('readable', () => {
+    //   let chunk;
+    //   while (null !== (chunk = fileStream.read(16))) {
+    //     // Handle the chunk
+    //     console.log("Bytes:", chunk);
+    //   }
+
+
+    // });
+
+
   });
 
   // function validateSender(frame) {
