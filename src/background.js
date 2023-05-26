@@ -178,8 +178,7 @@ app.whenReady().then(async () => {
     const fileContents = readFile(fileName, (err, data) => {
       // Encrypt
       const hash = encrypt(data, "ThisIsMyPassword");
-      console.log(hash);
-
+    
       // Test decryption
       const text = decrypt(hash, "ThisIsMyPassword");
       console.log(text);
