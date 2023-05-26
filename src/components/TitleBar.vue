@@ -29,6 +29,7 @@
 <script setup>
 
 import { ref, onMounted } from 'vue';
+import { bridge } from '@/bridge';
 
 // Define our reactive properties
 const isMaximized = ref(false);
@@ -40,39 +41,39 @@ defineProps({
 
 // Window button handlers
 function minimize() {
-    window.electronAPI.minimize();
+    bridge.minimize();
 }
 
 function toggleMaximizeRestore() {
-    window.electronAPI.toggleMaximizeRestore();
+    bridge.toggleMaximizeRestore();
 }
 
 function close() {
-    window.electronAPI.close();
+    bridge.close();
 }
 
 // Register any callback we need.
 // Register unmaximize callback
-window.electronAPI.onUnmaximize(() => {
+bridge.onUnmaximize(() => {
     isMaximized.value = false;
 });
 
 // Register maximized callback
-window.electronAPI.onMaximize(() => {
+bridge.onMaximize(() => {
     isMaximized.value = true;
 });
 
-window.electronAPI.onBlur(() => {
+bridge.onBlur(() => {
     isFocused.value = false;
 });
 
-window.electronAPI.onFocus(() => {
+bridge.onFocus(() => {
     isFocused.value = true;
 });
 
 // Component hooks
 onMounted(() => {
-    isMaximized.value = window.electronAPI.getIsMaximized();
+    isMaximized.value = bridge.getIsMaximized();
 });
 
 </script>

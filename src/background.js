@@ -173,29 +173,16 @@ app.whenReady().then(async () => {
 
   });
 
+  // Listens to the read-file message and opens the file. The file is read and the contents
+  // are sent to the renderer process.
   ipcMain.on('read-file', async (e, fileName) => {
-
+    // Open the file for reading
     const fileContents = readFile(fileName, (err, data) => {
-      // Encrypt
-      const hash = encrypt(data, "ThisIsMyPassword");
-    
-      // Test decryption
-      const text = decrypt(hash, "ThisIsMyPassword");
-      console.log(text);
+      if (err) { throw err; }
+      // Send the data to the render process
+      win.webContents.send("file-read", data);
+      
     });
-
-
-    // const fileStream = createReadStream(fileName);
-    // fileStream.on('readable', () => {
-    //   let chunk;
-    //   while (null !== (chunk = fileStream.read(16))) {
-    //     // Handle the chunk
-    //     console.log("Bytes:", chunk);
-    //   }
-
-
-    // });
-
 
   });
 

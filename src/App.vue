@@ -79,46 +79,9 @@
 
 <script setup>
 import TitleBar from './components/TitleBar.vue';
-import { reactive, provide } from 'vue';
-import { Category, Profile } from './krypt-pad-format';
+import { provide } from 'vue';
 
-const kpAPI = reactive({
-  fileOpened: false,
-  // Methods
-  /**
-  * Create a new file
-  */
-  async createNewFileAsync() {
-    // If there is already a file open, prompt the user if they are sure they want to create a new file
-
-    // Open save dialog to allow user to save a new file
-    const selectedFile = await window.electronAPI.showSaveFileDialogAsync();
-    console.log(selectedFile)
-    window.electronAPI.readFileAsync();
-    // Clear out the old file
-
-    // Prompt for new passphrase
-
-    // Set fileOpen flag
-    kpAPI.fileOpened = true;
-    // Create new profile object
-    kpAPI.profile = new Profile();
-    kpAPI.profile.categories.push(new Category("Banks"));
-    console.log("fdsfsdf")
-  },
-  /**
-   * Opens an existing file
-   */
-  async openExistingFileAsync(){
-    // Show the open file dialog
-    const selectedFile = await window.electronAPI.showOpenFileDialogAsync();
-    console.log(selectedFile)
-    if (!selectedFile.canceled){
-      window.electronAPI.readFileAsync(selectedFile.filePaths[0]);
-    }
-    
-  }
-});
+import kpAPI from '@/krypt-pad-api';
 
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);

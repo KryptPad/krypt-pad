@@ -13,7 +13,7 @@ let _onFocus = null
 let _isMaximized = false;
 
 // Set up the context bridge and expose this object in the window object (main world)
-contextBridge.exposeInMainWorld('electronAPI', {
+contextBridge.exposeInMainWorld('bridge', {
     toggleMaximizeRestore: () => ipcRenderer.send('toggle-maximize-restore'),
     minimize: () => ipcRenderer.send('minimize'),
     close: () => ipcRenderer.send('close'),
@@ -30,13 +30,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
         // Send message to main process to open the dialog.
         ipcRenderer.send('show-open-file-dialog');
         // Create a promise that waits for the message coming back that the user has selected a file
-        return new Promise((resolve)=>{
-            ipcRenderer.once('file-selected', (e, response) =>{
+        return new Promise((resolve) => {
+            ipcRenderer.once('file-selected', (e, response) => {
                 console.log(e, response);
                 resolve(response);
             });
-        }); 
-        
+        });
+
     },
     /**
      * Shows the save file dialog
@@ -46,16 +46,36 @@ contextBridge.exposeInMainWorld('electronAPI', {
         // Send message to main process to open the dialog.
         ipcRenderer.send('show-save-file-dialog');
         // Create a promise that waits for the message coming back that the user has selected a file
-        return new Promise((resolve)=>{
-            ipcRenderer.once('file-selected', (e, response) =>{
+        return new Promise((resolve) => {
+            ipcRenderer.once('file-selected', (e, response) => {
                 console.log(e, response);
                 resolve(response);
             });
-        }); 
-        
+        });
+
     },
+    /**
+     * Reads the contents of a file and returns it
+     * @param {String} fileName 
+     * @returns 
+     */
     readFileAsync: (fileName) => {
         ipcRenderer.send('read-file', fileName);
+        // Create a promise that waits for the message coming back that the user has selected a file
+        return new Promise((resolve) => {
+            try {
+                // Listen for the data to be sent from the main process
+                ipcRenderer.once('file-read', (e, response) => {
+                    resolve(response);
+                    
+                });
+
+            } catch {
+                reject();
+
+            }
+
+        });
     }
 })
 

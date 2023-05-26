@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 
 const algorithm = 'aes-256-gcm';
+const KEY_ALGORITHM = 'sha256';
 const IV_LENGTH = 12;
 const SALT_LENGTH = 32;
 const KEY_LENGTH = 32;
@@ -15,7 +16,7 @@ const encrypt = (text, passphrase) => {
     // Create a random 32 byte salt
     const salt = crypto.randomBytes(SALT_LENGTH);
     // Generate a derived key from a passphrase, salt, # of iterations
-    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 100000, KEY_LENGTH, 'sha256');
+    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 100000, KEY_LENGTH, KEY_ALGORITHM);
     // Generate a random initialization vector for our first encryption block
     const iv = crypto.randomBytes(IV_LENGTH);
     const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
@@ -50,7 +51,7 @@ const decrypt = (cipherData, passphrase) => {
     const authTag = cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4 + contentLength);
 
     // Generate a derived key from a passphrase, salt, # of iterations
-    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 100000, KEY_LENGTH, 'sha256');
+    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 100000, KEY_LENGTH, KEY_ALGORITHM);
     // Create a decipher object for aes 256, the secret key, and the iv.
     const decipher = crypto.createDecipheriv(algorithm, secretKey, iv);
     // Set the auth tag

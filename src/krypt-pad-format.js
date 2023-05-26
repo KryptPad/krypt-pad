@@ -6,7 +6,9 @@
 class Profile {
     constructor() {
         this.categories = [];
+
     }
+    
 }
 
 /**
@@ -16,8 +18,8 @@ class Category {
     constructor(name) {
         this.name = name;
         this.items = [];
-    }
 
+    }
 
 }
 
