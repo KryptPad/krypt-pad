@@ -17,6 +17,7 @@
     "@mdi/font": "^7.2.96",
     "core-js": "^3.30.0",
     "electron-window-state": "^5.0.3",
+    "keytar": "^7.9.0",
     "vue": "^3.2.47",
     "vue-router": "^4.1.6",
     "vuetify": "^3.1.13"

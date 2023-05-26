@@ -7,6 +7,12 @@ const kpAPI = reactive({
     fileName: null,
     profile: null,
 
+    _requirePassphraseCallback: null,
+
+    onRequirePassphrase(callback){
+        kpAPI._requirePassphraseCallback = callback; 
+    },
+
     /**
     * Create a new file
     */
@@ -17,12 +23,11 @@ const kpAPI = reactive({
         const selectedFile = await bridge.showSaveFileDialogAsync();
         if (selectedFile.canceled) { return; }
 
-        kpAPI.fileName = selectedFile.filePaths[0]
+        kpAPI.fileName = selectedFile.filePath;
         
-        // Clear out the old profile
-
         // Prompt for new passphrase
-
+        const passphrase = await kpAPI._requirePassphraseCallback?.(true);
+        console.log(passphrase)
         // Set fileOpen flag
         kpAPI.fileOpened = true;
         // Create new profile object

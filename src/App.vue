@@ -74,17 +74,26 @@
 
     </v-layout>
 
+    <!-- Passphrase prompt -->
+    <passphrase-prompt ref="passphrasePrompter" v-model="passphrase" :passphrase-is-new="passphraseIsNew"></passphrase-prompt>
+
   </v-app>
 </template>
 
 <script setup>
 import TitleBar from './components/TitleBar.vue';
-import { provide } from 'vue';
+import PassphrasePrompt from './components/PassphrasePrompt.vue';
+import { provide, ref } from 'vue';
 
+// Import the krypt-pad api
 import kpAPI from '@/krypt-pad-api';
 
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);
+
+// Data
+const passphrasePrompter = ref(null);
+const passphraseIsNew = ref(false);
 
 // Define menu items
 const menuItems = [
@@ -92,17 +101,24 @@ const menuItems = [
     title: "File",
     items: [
       { title: "Create New File", handler: kpAPI.createNewFileAsync },
-      { title: "Import KDF File" }
+      { title: "Import KDF File" },
+      { title: "Open File" }
     ]
   }
 ];
 
+
+// Create callback handler for passprhase prompt. When passphrase is required, this callback will be fired.
+kpAPI.onRequirePassphrase((isNew) => {
+  passphraseIsNew.value = isNew;
+  passphrasePrompter.value.show();
+  
+});
+
 </script>
 
 <style lang="scss">
-
 html {
   overflow: hidden;
 }
-
 </style>
