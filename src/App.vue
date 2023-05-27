@@ -75,7 +75,7 @@
     </v-layout>
 
     <!-- Passphrase prompt -->
-    <passphrase-prompt ref="passphrasePrompter" v-model="passphrase" :passphrase-is-new="passphraseIsNew"></passphrase-prompt>
+    <passphrase-prompt ref="passphrasePrompter" :passphrase-is-new="passphraseIsNew"></passphrase-prompt>
 
   </v-app>
 </template>
