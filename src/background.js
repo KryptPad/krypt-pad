@@ -43,6 +43,7 @@ async function createWindow() {
     height: mainWindowState.height,
     isMaximized: mainWindowState.isMaximized,
     titleBarStyle: "hidden",
+    frame: false,
     icon: path.join(__static, "safe.ico"),
     webPreferences: {
 
