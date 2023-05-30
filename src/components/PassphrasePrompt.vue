@@ -22,7 +22,7 @@
 
 <script setup>
 
-import { watch, ref } from 'vue';
+import { ref } from 'vue';
 import kpAPI from '@/krypt-pad-api';
 
 // Props
@@ -39,17 +39,14 @@ function show(){
     dialogOpen.value = true;
 }
 
-// Watch
-watch(passphrase, (newVal) => {
-    kpAPI.passphrase = newVal;
-});
-
 defineExpose({show});
 
 // Events
 function close(){
-    dialogOpen.value = false;
+    kpAPI.passphrase = passphrase;
     emit("closed", kpAPI.passphrase);
+
+    dialogOpen.value = false;
 }
 
 </script>

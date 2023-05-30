@@ -32,6 +32,7 @@
 
     <v-layout>
 
+      <!-- App side bar -->
       <v-navigation-drawer permanent rail>
 
         <!-- Top icons -->
@@ -63,27 +64,26 @@
 
       </v-navigation-drawer>
 
-      <!-- Main content -->
-      <v-main :scrollable="true">
-        <v-container class="h-100 align-start d-flex flex-column">
-          <router-view>
-          </router-view>
-
-        </v-container>
-      </v-main>
+      <!-- Display router view components here -->
+      <router-view>
+      </router-view>
 
     </v-layout>
 
     <!-- Passphrase prompt -->
-    <passphrase-prompt ref="passphrasePrompter" :passphrase-is-new="passphraseIsNew" @closed="passphraseDialogClosed"></passphrase-prompt>
+    <passphrase-prompt ref="passphrasePrompter" :passphrase-is-new="passphraseIsNew"
+      @closed="passphraseDialogClosed"></passphrase-prompt>
 
+    <confirm-dialog ref="confirmDialog1"></confirm-dialog>
   </v-app>
 </template>
 
 <script setup>
 import TitleBar from './components/TitleBar.vue';
 import PassphrasePrompt from './components/PassphrasePrompt.vue';
+import ConfirmDialog from './components/ConfirmDialog.vue';
 import { provide, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 // Import the krypt-pad api
 import kpAPI from '@/krypt-pad-api';
@@ -94,6 +94,12 @@ provide("kpAPI", kpAPI);
 // Data
 const passphrasePrompter = ref(null);
 const passphraseIsNew = ref(false);
+const confirmDialog1 = ref(null);
+
+// Initialize the API
+kpAPI.router = useRouter();
+kpAPI.confirmDialog = confirmDialog1;
+
 let passphraseResolve;
 //let passphraseReject;
 
@@ -104,7 +110,8 @@ const menuItems = [
     items: [
       { title: "Create New File", handler: kpAPI.createNewFileAsync },
       { title: "Import KDF File" },
-      { title: "Open File", handler: kpAPI.openExistingFileAsync }
+      { title: "Open File", handler: kpAPI.openExistingFileAsync },
+      { title: "Close File", handler: kpAPI.closeFile }
     ]
   }
 ];
@@ -121,7 +128,7 @@ kpAPI.onRequirePassphrase((isNew) => {
 });
 
 // Events
-function passphraseDialogClosed(passphrase){
+function passphraseDialogClosed(passphrase) {
   passphraseResolve(passphrase);
 }
 

@@ -7,6 +7,12 @@ const SALT_LENGTH = 32;
 const KEY_LENGTH = 32;
 const ITERATIONS = 100000;
 
+/**
+ * Generates an encryption key from a passphrase and a salt.
+ * @param {String} passphrase 
+ * @param {Buffer} salt 
+ * @returns 
+ */
 const generateSecretKey = function (passphrase, salt) {
     return new Promise((resolve, reject) => {
         // Generate a derived key from a passphrase, salt, # of iterations. DO NOT USE THE SYNC version of this

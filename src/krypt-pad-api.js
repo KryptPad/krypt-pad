@@ -1,6 +1,6 @@
 import { reactive } from 'vue';
 import { bridge } from '@/bridge';
-import { Category, Profile } from './krypt-pad-format';
+import { Profile } from './krypt-pad-profile';
 import { decryptAsync, encryptAsync } from '@/krypto';
 
 const kpAPI = reactive({
@@ -8,10 +8,29 @@ const kpAPI = reactive({
     fileName: null,
     profile: null,
     passphrase: null,
+    router: null,
+    confirmDialog: null,
+    // Callback for requiring passphrase
     _requirePassphraseCallback: null,
 
+    /**
+     * Registers a callback that will open a prompt for the user to enter his/her passphrase.
+     * @param {Function} callback 
+     */
     onRequirePassphrase(callback) {
         kpAPI._requirePassphraseCallback = callback;
+    },
+
+    /**
+     * Closes the currently open file
+     */
+    closeFile() {
+        kpAPI.passphrase = null;
+        kpAPI.profile = null;
+        kpAPI.fileOpened = false;
+
+        // Go to start page
+        kpAPI.router?.push({ name: "start" });
     },
 
     /**
@@ -33,9 +52,11 @@ const kpAPI = reactive({
         kpAPI.fileOpened = true;
         // Create new profile object
         kpAPI.profile = new Profile();
-        kpAPI.profile.categories.push(new Category("Banks"));
-        // TEST CODE
+
+        // Commit the file once after creation
         await kpAPI.commitProfile();
+
+        kpAPI.router?.push({ name: "home" });
 
     },
     /**
@@ -52,18 +73,19 @@ const kpAPI = reactive({
         const encryptedJSONString = await bridge.readFileAsync(kpAPI.fileName);
         if (encryptedJSONString) {
             // Prompt for new passphrase
-            
+
             const passphrase = await kpAPI._requirePassphraseCallback?.(true);
             // Decrypt the json string
             const jsonString = await decryptAsync(encryptedJSONString, passphrase);
-            
+
             // Load the profile
-            console.log(jsonString)
-            kpAPI.profile = JSON.parse(jsonString);
+            kpAPI.profile = Profile.from(jsonString);
+            console.log(kpAPI.profile)
             // Set fileOpen flag
             kpAPI.fileOpened = true;
+
+            kpAPI.router?.push({ name: "home" });
         }
-        
 
     },
     /**
@@ -89,6 +111,34 @@ const kpAPI = reactive({
         }
 
 
+    },
+
+    /**
+     * Adds a category to the profile and commits the profile
+     * @param {Category} category 
+     * @returns 
+     */
+    async addCategory(category) {
+        if (!category) { return; }
+        // Add the category to the profile
+        kpAPI.profile.categories.push(category);
+
+        // Commit the profile
+        await kpAPI.commitProfile();
+    },
+
+    async deleteCategory(category) {
+        console.log("delete category")
+        if (await kpAPI.confirmDialog?.confirm("Are you sure you want to delete this category? All items associated will be deleted")) {
+            // Remove category from list
+            const index = kpAPI.profile?.categories.indexOf(category);
+            if (index > -1) {
+                kpAPI.profile?.categories.splice(index, 1);
+            }
+
+            // Commit the profile
+            await kpAPI.commitProfile();
+        }
     }
 });
 

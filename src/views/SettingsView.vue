@@ -1,14 +1,22 @@
 <template>
-    <div class="pb-3">
-        Settings
-    </div>
+    <!-- Main content -->
+    <v-main :scrollable="true">
+        <v-container class="">
 
-    <div class="d-flex">
-        <v-card class="pa-3">
-            <v-switch v-model="lightMode" prepend-icon="mdi-weather-night" append-icon="mdi-weather-sunny"></v-switch>
-        </v-card>
+            <div class="pb-3">
+                Settings
+            </div>
 
-    </div>
+            <div class="d-flex">
+                <v-card class="pa-3">
+                    <v-switch v-model="lightMode" prepend-icon="mdi-weather-night"
+                        append-icon="mdi-weather-sunny"></v-switch>
+                </v-card>
+
+            </div>
+
+        </v-container>
+    </v-main>
 </template>
 
 <script setup>
@@ -19,10 +27,10 @@ import { useTheme } from 'vuetify/lib/framework.mjs';
 const theme = useTheme();
 const lightMode = ref(!theme.global.current.value.dark);
 
-watch(lightMode, ()=>{
+watch(lightMode, () => {
     console.log(theme)
     theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
-        
+
 });
 
 </script>
