@@ -1,10 +1,29 @@
 import crypto from 'crypto';
 
-const algorithm = 'aes-256-gcm';
+const ALGORITHM = 'aes-256-gcm';
 const KEY_ALGORITHM = 'sha256';
 const IV_LENGTH = 12;
 const SALT_LENGTH = 32;
 const KEY_LENGTH = 32;
+const ITERATIONS = 100000;
+
+const generateSecretKey = function (passphrase, salt) {
+    return new Promise((resolve, reject) => {
+        // Generate a derived key from a passphrase, salt, # of iterations. DO NOT USE THE SYNC version of this
+        // function. It is extremely slow.
+        crypto.pbkdf2(passphrase, salt, ITERATIONS, KEY_LENGTH, KEY_ALGORITHM, (err, secretKey) => {
+            if (!err) {
+                resolve(secretKey);
+
+            } else {
+                reject(err);
+
+            }
+
+        });
+
+    });
+}
 
 /**
  * Encrypts data with a key generated from a passphrase
@@ -12,14 +31,14 @@ const KEY_LENGTH = 32;
  * @param {*} passphrase 
  * @returns 
  */
-const encrypt = (text, passphrase) => {
+const encryptAsync = async (text, passphrase) => {
     // Create a random 32 byte salt
     const salt = crypto.randomBytes(SALT_LENGTH);
     // Generate a derived key from a passphrase, salt, # of iterations
-    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 15000, KEY_LENGTH, KEY_ALGORITHM);
+    const secretKey = await generateSecretKey(passphrase, salt);
     // Generate a random initialization vector for our first encryption block
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
+    const cipher = crypto.createCipheriv(ALGORITHM, secretKey, iv);
     // Encrypt the data
     const content = Buffer.concat([cipher.update(text), cipher.final()]);
     // Determine the length of the encrypted data and store it with the cipher text so we know where the
@@ -39,9 +58,13 @@ const encrypt = (text, passphrase) => {
  * @param {*} passphrase 
  * @returns 
  */
-const decrypt = (cipherData, passphrase) => {
+const decryptAsync = async (cipherData, passphrase) => {
     // Get some prepended data like salt and iv
     const salt = Buffer.from(cipherData.subarray(0, SALT_LENGTH));
+    // Generate the secret key from the salt and passphrase
+    const secretKey = await generateSecretKey(passphrase, salt);
+
+    // Get the IV
     const iv = Buffer.from(cipherData.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH));
     // Get the rest of the message to decrypt. But first, get the length of the content. This is determined by an
     // 8 bit uint prepended to the content
@@ -49,18 +72,17 @@ const decrypt = (cipherData, passphrase) => {
     const content = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4, SALT_LENGTH + IV_LENGTH + 4 + contentLength));
     // Get the auth tag at the end
     const authTag = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4 + contentLength));
-
-    // Generate a derived key from a passphrase, salt, # of iterations
-    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 15000, KEY_LENGTH, KEY_ALGORITHM);
+    
     // Create a decipher object for aes 256, the secret key, and the iv.
-    const decipher = crypto.createDecipheriv(algorithm, secretKey, iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, secretKey, iv);
     // Set the auth tag
     decipher.setAuthTag(authTag);
     // Decrypt the data and concat the final block to the output buffer
     const decrpyted = Buffer.concat([decipher.update(content), decipher.final()]);
     return decrpyted.toString();
+
 }
 
 
 
-export { encrypt, decrypt }
+export { encryptAsync, decryptAsync }

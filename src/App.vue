@@ -104,7 +104,7 @@ const menuItems = [
     items: [
       { title: "Create New File", handler: kpAPI.createNewFileAsync },
       { title: "Import KDF File" },
-      { title: "Open File" }
+      { title: "Open File", handler: kpAPI.openExistingFileAsync }
     ]
   }
 ];

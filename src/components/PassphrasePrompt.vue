@@ -1,7 +1,7 @@
 <template>
     <!-- Passphrase prompt -->
     <v-dialog v-model="dialogOpen" :persistent="true" max-width="30rem">
-        <v-card>
+        <v-card @keypress.enter="close">
             <v-card-title>{{ passphraseIsNew ? 'Enter New Passphrase' : 'Enter Passphrase' }}</v-card-title>
             <v-card-text>
                 <p v-if="passphraseIsNew">
@@ -11,10 +11,10 @@
                 <p v-else>
                     Please enter your passphrase to decrypt your data.
                 </p>
-                <v-text-field v-model.lazy="passphrase" type="password" class="mt-3"></v-text-field>
+                <v-text-field :autofocus="true" v-model.lazy="passphrase" type="password" class="mt-3"></v-text-field>
             </v-card-text>
             <v-card-actions>
-                <v-btn color="primary" block @click="closed">DONE</v-btn>
+                <v-btn color="primary" block @click="close">DONE</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
@@ -47,7 +47,7 @@ watch(passphrase, (newVal) => {
 defineExpose({show});
 
 // Events
-function closed(){
+function close(){
     dialogOpen.value = false;
     emit("closed", kpAPI.passphrase);
 }

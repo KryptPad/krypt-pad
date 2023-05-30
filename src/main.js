@@ -35,6 +35,7 @@ const vuetify = createVuetify(
 );
 
 let app = createApp(App);
+
 app.use(router);
 app.use(vuetify);
 

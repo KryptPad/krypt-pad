@@ -1,7 +1,7 @@
 import { reactive } from 'vue';
 import { bridge } from '@/bridge';
 import { Category, Profile } from './krypt-pad-format';
-import { decrypt, encrypt } from '@/krypto';
+import { decryptAsync, encryptAsync } from '@/krypto';
 
 const kpAPI = reactive({
     fileOpened: false,
@@ -55,10 +55,13 @@ const kpAPI = reactive({
             
             const passphrase = await kpAPI._requirePassphraseCallback?.(true);
             // Decrypt the json string
+            const jsonString = await decryptAsync(encryptedJSONString, passphrase);
             
-            const jsonString = decrypt(encryptedJSONString, passphrase);
-            
+            // Load the profile
             console.log(jsonString)
+            kpAPI.profile = JSON.parse(jsonString);
+            // Set fileOpen flag
+            kpAPI.fileOpened = true;
         }
         
 
@@ -72,7 +75,7 @@ const kpAPI = reactive({
         if (kpAPI.fileName && kpAPI.passphrase) {
             try {
                 // Encrypt the data
-                const cipherBuffer = encrypt(JSON.stringify(kpAPI.profile), kpAPI.passphrase);
+                const cipherBuffer = await encryptAsync(JSON.stringify(kpAPI.profile), kpAPI.passphrase);
                 // Write a file containig the encrypted data
                 await bridge.saveFileAsync(kpAPI.fileName, cipherBuffer);
 
