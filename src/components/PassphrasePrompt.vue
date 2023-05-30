@@ -1,6 +1,6 @@
 <template>
     <!-- Passphrase prompt -->
-    <v-dialog v-model="dialogOpen" :persistent="true">
+    <v-dialog v-model="dialogOpen" :persistent="true" max-width="30rem">
         <v-card>
             <v-card-title>{{ passphraseIsNew ? 'Enter New Passphrase' : 'Enter Passphrase' }}</v-card-title>
             <v-card-text>
@@ -11,10 +11,10 @@
                 <p v-else>
                     Please enter your passphrase to decrypt your data.
                 </p>
-                <v-text-field v-model="passphrase" type="password"></v-text-field>
+                <v-text-field v-model.lazy="passphrase" type="password" class="mt-3"></v-text-field>
             </v-card-text>
             <v-card-actions>
-                <v-btn color="primary" block @click="dialogOpen = false">Close Dialog</v-btn>
+                <v-btn color="primary" block @click="closed">DONE</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
@@ -23,19 +23,17 @@
 <script setup>
 
 import { watch, ref } from 'vue';
+import kpAPI from '@/krypt-pad-api';
 
 // Props
-const props = defineProps({
-    passphraseIsNew: Boolean,
-    modelValue: String
+defineProps({
+    passphraseIsNew: Boolean
 });
 
+const emit = defineEmits(["closed"]);
 // Data
-const passphrase = ref(props.modelValue);
-const dialogOpen = ref();
-
-// Emits
-const emit = defineEmits(['update:modelValue'])
+const passphrase = ref(null);
+const dialogOpen = ref(false);
 
 function show(){
     dialogOpen.value = true;
@@ -43,9 +41,15 @@ function show(){
 
 // Watch
 watch(passphrase, (newVal) => {
-    emit('update:modelValue', newVal);
+    kpAPI.passphrase = newVal;
 });
 
 defineExpose({show});
+
+// Events
+function closed(){
+    dialogOpen.value = false;
+    emit("closed", kpAPI.passphrase);
+}
 
 </script>

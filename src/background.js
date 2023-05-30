@@ -5,8 +5,8 @@ const windowStateKeeper = require('electron-window-state')
 const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer')
 const path = require('path')
 const { createProtocol } = require('vue-cli-plugin-electron-builder/lib')
-const { readFile } = require('fs')
-const { encrypt, decrypt } = require('./crypto')
+const { readFile, writeFile } = require('fs')
+const { encrypt, decrypt } = require('./krypto')
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -186,6 +186,15 @@ app.whenReady().then(async () => {
     });
 
   });
+
+  // Listen to the message to write the contents to the file 
+ipcMain.on('write-file', async (e, fileName, contents) => {
+  writeFile(fileName, contents, (err) => {
+    // Tell the renderer that the main process has written the file.
+    win.webContents.send("file-written", err);
+  });
+
+});
 
   // function validateSender(frame) {
   //   // Value the host of the URL using an actual URL parser and an allowlist

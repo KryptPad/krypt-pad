@@ -75,7 +75,7 @@
     </v-layout>
 
     <!-- Passphrase prompt -->
-    <passphrase-prompt ref="passphrasePrompter" :passphrase-is-new="passphraseIsNew"></passphrase-prompt>
+    <passphrase-prompt ref="passphrasePrompter" :passphrase-is-new="passphraseIsNew" @closed="passphraseDialogClosed"></passphrase-prompt>
 
   </v-app>
 </template>
@@ -94,6 +94,8 @@ provide("kpAPI", kpAPI);
 // Data
 const passphrasePrompter = ref(null);
 const passphraseIsNew = ref(false);
+let passphraseResolve;
+//let passphraseReject;
 
 // Define menu items
 const menuItems = [
@@ -112,8 +114,16 @@ const menuItems = [
 kpAPI.onRequirePassphrase((isNew) => {
   passphraseIsNew.value = isNew;
   passphrasePrompter.value.show();
-  
+  return new Promise((resolve) => {
+    passphraseResolve = resolve;
+    //passphraseReject = reject;
+  });
 });
+
+// Events
+function passphraseDialogClosed(passphrase){
+  passphraseResolve(passphrase);
+}
 
 </script>
 

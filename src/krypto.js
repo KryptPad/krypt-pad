@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 const algorithm = 'aes-256-gcm';
 const KEY_ALGORITHM = 'sha256';
@@ -16,7 +16,7 @@ const encrypt = (text, passphrase) => {
     // Create a random 32 byte salt
     const salt = crypto.randomBytes(SALT_LENGTH);
     // Generate a derived key from a passphrase, salt, # of iterations
-    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 100000, KEY_LENGTH, KEY_ALGORITHM);
+    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 15000, KEY_LENGTH, KEY_ALGORITHM);
     // Generate a random initialization vector for our first encryption block
     const iv = crypto.randomBytes(IV_LENGTH);
     const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
@@ -41,17 +41,17 @@ const encrypt = (text, passphrase) => {
  */
 const decrypt = (cipherData, passphrase) => {
     // Get some prepended data like salt and iv
-    const salt = cipherData.subarray(0, SALT_LENGTH);
-    const iv = cipherData.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+    const salt = Buffer.from(cipherData.subarray(0, SALT_LENGTH));
+    const iv = Buffer.from(cipherData.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH));
     // Get the rest of the message to decrypt. But first, get the length of the content. This is determined by an
     // 8 bit uint prepended to the content
-    const contentLength = cipherData.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + 4).readUInt32LE();
-    const content = cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4, SALT_LENGTH + IV_LENGTH + 4 + contentLength);
+    const contentLength = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + 4)).readUInt32LE();
+    const content = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4, SALT_LENGTH + IV_LENGTH + 4 + contentLength));
     // Get the auth tag at the end
-    const authTag = cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4 + contentLength);
+    const authTag = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4 + contentLength));
 
     // Generate a derived key from a passphrase, salt, # of iterations
-    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 100000, KEY_LENGTH, KEY_ALGORITHM);
+    const secretKey = crypto.pbkdf2Sync(passphrase, salt, 15000, KEY_LENGTH, KEY_ALGORITHM);
     // Create a decipher object for aes 256, the secret key, and the iv.
     const decipher = crypto.createDecipheriv(algorithm, secretKey, iv);
     // Set the auth tag

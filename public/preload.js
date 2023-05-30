@@ -61,13 +61,40 @@ contextBridge.exposeInMainWorld('bridge', {
      */
     readFileAsync: (fileName) => {
         ipcRenderer.send('read-file', fileName);
-        // Create a promise that waits for the message coming back that the user has selected a file
+        // Create a promise that waits for the message coming back that the file has been read
         return new Promise((resolve) => {
             try {
                 // Listen for the data to be sent from the main process
                 ipcRenderer.once('file-read', (e, response) => {
                     resolve(response);
-                    
+
+                });
+
+            } catch {
+                reject();
+
+            }
+
+        });
+    },
+    /**
+     * Saves contents to a file
+     * @param {String} fileName 
+     * @param {*} contents 
+     * @returns 
+     */
+    saveFileAsync: (fileName, contents) => {
+        ipcRenderer.send('write-file', fileName, contents);
+        // Create a promise that waits for the message coming back that the file has been written
+        return new Promise((resolve) => {
+            try {
+                // Listen for the data to be sent from the main process
+                ipcRenderer.once('file-written', (e, err) => {
+                    console.log("file written")
+                    if (err) { throw err; }
+
+                    resolve();
+
                 });
 
             } catch {
