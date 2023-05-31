@@ -2,8 +2,6 @@
     <div class="mb-1">
         <v-text-field v-model="title" type="text" label="category name" :rules="rules" hide-details="auto" class="mb-3"
             autofocus>
-            <!-- <template v-slot:append>
-            </template> -->
         </v-text-field>
 
         <v-btn color="primary" icon="mdi-check" class="mr-3" @click="addCategory"></v-btn>

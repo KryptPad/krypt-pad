@@ -5,7 +5,7 @@
 class Profile {
     constructor() {
         this.categories = [];
-
+        this.items = [];
     }
 
 }
@@ -27,6 +27,7 @@ Profile.from = function (json) {
     // Create the category objects
     for (const c of profileObject.categories) {
         const category = new Category(c.title);
+        category.id = c.id;
         // Add category to profile
         profile.categories.push(category);
 
@@ -42,10 +43,25 @@ Profile.from = function (json) {
 class Category {
     constructor(title) {
         this.title = title;
-        this.items = [];
+        this.id = crypto.randomUUID();
 
     }
 
 }
 
-export { Profile, Category };
+/**
+ * Wrapper for user defined data to encrypt. Contains fields and notes
+ */
+class Item{
+    constructor(categoryId, title){
+        this.title = title;
+        this.notes = null;
+        this.id = crypto.randomUUID();
+        // Link to a category
+        this.categoryId = categoryId;
+
+    }
+
+}
+
+export { Profile, Category, Item };

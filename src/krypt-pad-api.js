@@ -54,7 +54,7 @@ const kpAPI = reactive({
         kpAPI.profile = new Profile();
 
         // Commit the file once after creation
-        await kpAPI.commitProfile();
+        await kpAPI.commitProfileAsync();
 
         kpAPI.router?.push({ name: "home" });
 
@@ -74,7 +74,7 @@ const kpAPI = reactive({
         if (encryptedJSONString) {
             // Prompt for new passphrase
 
-            const passphrase = await kpAPI._requirePassphraseCallback?.(true);
+            const passphrase = await kpAPI._requirePassphraseCallback?.(false);
             // Decrypt the json string
             const jsonString = await decryptAsync(encryptedJSONString, passphrase);
 
@@ -91,7 +91,7 @@ const kpAPI = reactive({
     /**
      * Encrypts the profile and commits it to a file
      */
-    async commitProfile() {
+    async commitProfileAsync() {
         console.log("writing file")
         // Encrypt the profile. But first, make sure we have a filename and a passphrase
         if (kpAPI.fileName && kpAPI.passphrase) {
@@ -121,12 +121,29 @@ const kpAPI = reactive({
     async addCategory(category) {
         if (!category) { return; }
         // Add the category to the profile
-        kpAPI.profile.categories.push(category);
+        kpAPI.profile?.categories.push(category);
 
         // Commit the profile
-        await kpAPI.commitProfile();
+        await kpAPI.commitProfileAsync();
     },
 
+    /**
+     * Renames a category and commits the profile
+     * @param {Category} category 
+     * @param {String} title
+     * @returns 
+     */
+    async renameCategoryAsync(category, title) {
+        if (!title) { return; }
+        category.title = title;
+        // Commit the profile
+        await kpAPI.commitProfileAsync();
+    },
+
+    /**
+     * Deletes a category from the profile
+     * @param {Category} category 
+     */
     async deleteCategory(category) {
         console.log("delete category")
         if (await kpAPI.confirmDialog?.confirm("Are you sure you want to delete this category? All items associated will be deleted")) {
@@ -137,7 +154,7 @@ const kpAPI = reactive({
             }
 
             // Commit the profile
-            await kpAPI.commitProfile();
+            await kpAPI.commitProfileAsync();
         }
     }
 });
