@@ -13,9 +13,14 @@ const routes = [
     component: () => import(/* webpackChunkName: "home" */ '../views/HomeView.vue')
   },
   {
-    path: '/item',
+    path: '/item/:id?',
     name: 'item',
-    component: () => import(/* webpackChunkName: "item" */ '../views/ItemView.vue')
+    component: () => import(/* webpackChunkName: "item" */ '../views/ItemView.vue'),
+    props: (route) => {
+      return {
+          id: route.params.id
+      };
+  }
   },
   {
     path: '/about',

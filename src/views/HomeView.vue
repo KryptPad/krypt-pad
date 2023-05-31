@@ -38,7 +38,7 @@
       <!-- Add new item -->
       <v-tooltip text="Add new item">
         <template v-slot:activator="{ props }">
-          <v-btn v-bind="props" icon="mdi-plus"></v-btn>
+          <v-btn v-bind="props" icon="mdi-plus" :to="{name: 'item'}"></v-btn>
         </template>
       </v-tooltip>
 
