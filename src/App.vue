@@ -40,7 +40,7 @@
           <v-tooltip text="Home">
             <template v-slot:activator="{ props }">
               <v-list-item v-bind="props" prepend-icon="mdi-home-city" title="Home" value="home"
-                :to="{ name: 'home' }"></v-list-item>
+                :disabled="!kpAPI.fileOpened" :to="{ name: 'home' }"></v-list-item>
             </template>
           </v-tooltip>
 
@@ -83,7 +83,7 @@ import TitleBar from './components/TitleBar.vue';
 import PassphrasePrompt from './components/PassphrasePrompt.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
 import { provide, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 
 // Import the krypt-pad api
 import kpAPI from '@/krypt-pad-api';
@@ -98,6 +98,7 @@ const confirmDialog1 = ref(null);
 
 // Initialize the API
 kpAPI.router = useRouter();
+kpAPI.route = useRoute();
 kpAPI.confirmDialog = confirmDialog1;
 
 let passphraseResolve;

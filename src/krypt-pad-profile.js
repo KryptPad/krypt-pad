@@ -24,12 +24,21 @@ Profile.from = function (json) {
     // Create the Profile
     const profile = new Profile();
 
-    // Create the category objects
+    // Create the categories
     for (const c of profileObject.categories) {
         const category = new Category(c.title);
         category.id = c.id;
         // Add category to profile
         profile.categories.push(category);
+
+    }
+
+    // Create the items
+    for (const i of profileObject.items) {
+        const item = new Item(i.categoryId, i.title);
+        item.id = i.id;
+        // Add category to profile
+        profile.items.push(item);
 
     }
 
@@ -54,7 +63,7 @@ class Category {
  */
 class Item{
     constructor(categoryId, title){
-        this.title = title;
+        this.title = title || 'Untitled';
         this.notes = null;
         this.id = crypto.randomUUID();
         // Link to a category
@@ -64,4 +73,11 @@ class Item{
 
 }
 
-export { Profile, Category, Item };
+class Field{
+    constructor(name, value){
+        this.name = name;
+        this.value = value;
+    }
+}
+
+export { Profile, Category, Item, Field };

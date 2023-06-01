@@ -1,17 +1,21 @@
 <template>
-    <div class="h-100 w-100 d-flex flex-column align-center justify-center">
+    <v-main>
+        <v-container class="fill-height d-flex flex-column align-center justify-center">
 
-        <img src="../assets/safe.svg" alt="Krypt Pad" style="width: 10rem" />
+            <img src="../assets/safe.svg" alt="Krypt Pad" style="width: 12rem" />
+            
+            <div class="text-center">Welcome! Create a new file or open an existing one.</div>
 
-        <div>
-            <span>Welcome! Create a new file or open an existing one</span>
-        </div>
-
-        <div class="mt-3">
-            <v-btn color="primary" class="mr-3" @click="kpAPI.createNewFileAsync">Create New File</v-btn>
-            <v-btn @click="kpAPI.openExistingFileAsync">Open File</v-btn>
-        </div>
-    </div>
+            <v-row class="mt-3 flex-grow-0">
+                <v-col>
+                    <v-btn color="secondary" @click="kpAPI.openExistingFileAsync">Open File</v-btn>
+                </v-col>
+                <v-col>
+                    <v-btn  @click="kpAPI.createNewFileAsync">Create New File</v-btn>
+                </v-col>                
+            </v-row>
+        </v-container>
+    </v-main>
 </template>
 
 <script setup>

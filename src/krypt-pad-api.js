@@ -1,17 +1,28 @@
-import { reactive } from 'vue';
+import { reactive, watch } from 'vue';
 import { bridge } from '@/bridge';
-import { Profile } from './krypt-pad-profile';
+import { Item, Profile } from './krypt-pad-profile';
 import { decryptAsync, encryptAsync } from '@/krypto';
 
 const kpAPI = reactive({
     fileOpened: false,
     fileName: null,
-    profile: null,
+    profile: reactive({}),
     passphrase: null,
     router: null,
+    route: null,
     confirmDialog: null,
     // Callback for requiring passphrase
     _requirePassphraseCallback: null,
+
+    /**
+     * Redirects to the Start page when there is no profile
+     */
+    redirectToStartWhenNoProfile(){
+        if (!kpAPI.profile){
+            // Go to start page
+            kpAPI.router?.push({ name: "start" });
+        }
+    },
 
     /**
      * Registers a callback that will open a prompt for the user to enter his/her passphrase.
@@ -51,7 +62,8 @@ const kpAPI = reactive({
         // Set fileOpen flag
         kpAPI.fileOpened = true;
         // Create new profile object
-        kpAPI.profile = new Profile();
+        kpAPI.profile = reactive(new Profile());
+        watchProfile(kpAPI.profile);
 
         // Commit the file once after creation
         await kpAPI.commitProfileAsync();
@@ -79,7 +91,9 @@ const kpAPI = reactive({
             const jsonString = await decryptAsync(encryptedJSONString, passphrase);
 
             // Load the profile
-            kpAPI.profile = Profile.from(jsonString);
+            kpAPI.profile = reactive(Profile.from(jsonString));
+            watchProfile(kpAPI.profile);
+
             console.log(kpAPI.profile)
             // Set fileOpen flag
             kpAPI.fileOpened = true;
@@ -88,6 +102,7 @@ const kpAPI = reactive({
         }
 
     },
+
     /**
      * Encrypts the profile and commits it to a file
      */
@@ -156,7 +171,33 @@ const kpAPI = reactive({
             // Commit the profile
             await kpAPI.commitProfileAsync();
         }
+    },
+
+    /**
+     * Adds a new item to the profile
+     * @param {String} categoryId 
+     * @param {String} title
+     */
+    async addItemAsync(categoryId, title){
+        console.log("add item to", kpAPI.profile)
+        const item = new Item(categoryId, title);
+        // Add the item to the global items list
+        kpAPI.profile.items.push(item);
+        
+
+        return item;
     }
 });
+
+function watchProfile(profile){
+    watch(profile, async () => {
+        
+        //await nextTick();
+        // Commit the profile
+        console.log("watcher fired")
+        await kpAPI.commitProfileAsync();
+    }, {deep: true});
+}
+
 
 export default kpAPI;
