@@ -128,18 +128,6 @@ const kpAPI = reactive({
     },
 
     /**
-     * Renames a category and commits the profile
-     * @param {Category} category 
-     * @param {String} title
-     * @returns 
-     */
-    async renameCategoryAsync(category, title) {
-        if (!title) { return; }
-        category.title = title;
-        
-    },
-
-    /**
      * Deletes a category from the profile
      * @param {Category} category 
      */
