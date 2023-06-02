@@ -94,7 +94,6 @@ const kpAPI = reactive({
             kpAPI.profile = reactive(Profile.from(jsonString));
             watchProfile(kpAPI.profile);
 
-            console.log(kpAPI.profile)
             // Set fileOpen flag
             kpAPI.fileOpened = true;
 
@@ -129,20 +128,6 @@ const kpAPI = reactive({
     },
 
     /**
-     * Adds a category to the profile and commits the profile
-     * @param {Category} category 
-     * @returns 
-     */
-    async addCategory(category) {
-        if (!category) { return; }
-        // Add the category to the profile
-        kpAPI.profile?.categories.push(category);
-
-        // Commit the profile
-        await kpAPI.commitProfileAsync();
-    },
-
-    /**
      * Renames a category and commits the profile
      * @param {Category} category 
      * @param {String} title
@@ -151,8 +136,7 @@ const kpAPI = reactive({
     async renameCategoryAsync(category, title) {
         if (!title) { return; }
         category.title = title;
-        // Commit the profile
-        await kpAPI.commitProfileAsync();
+        
     },
 
     /**

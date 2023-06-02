@@ -37,6 +37,7 @@ Profile.from = function (json) {
     for (const i of profileObject.items) {
         const item = new Item(i.categoryId, i.title);
         item.id = i.id;
+        item.notes = i.notes;
         // Add category to profile
         profile.items.push(item);
 

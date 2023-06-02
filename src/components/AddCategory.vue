@@ -22,8 +22,10 @@ const rules = [
 const emit = defineEmits(['closed']);
 
 // Event handlers
-async function addCategory() {
-    await kpAPI.addCategory(new Category(title));
+function addCategory() {
+    // Add the category to the profile
+    kpAPI.profile.categories.push(new Category(title));
+    
     close();
 }
 
