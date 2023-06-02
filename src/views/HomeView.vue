@@ -57,8 +57,8 @@
   <!-- Main content for cards -->
   <v-main :scrollable="true">
 
-    <v-container fluid class="d-flex">
-      <v-card v-for="item in filteredItems" :key="item.id" width="20rem" @click="itemSelected(item)">
+    <v-container fluid class="d-flex flex-wrap">
+      <v-card v-for="item in filteredItems" :key="item.id" width="20rem" @click="itemSelected(item)" class="mr-3 mb-3">
         <v-card-title>{{ item.title }}</v-card-title>
       </v-card>
     </v-container>

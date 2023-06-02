@@ -5,7 +5,7 @@
                 <v-col>
                     <!-- We are not using v-model here because v-model.lazy does not work on custom components. And We
                     do not want to trigger file update on every keypress! -->
-                    <v-text-field v-model="item.title" type="text"
+                    <v-text-field :model-value="item.title" @change="item.title = $event.target.value" type="text"
                         class="flex-grow-0" label="card name" :autofocus="true"
                         placeholder="enter the name of the card (e.g. My Bank Account)"></v-text-field>
                 </v-col>
@@ -16,7 +16,7 @@
             </v-row>
 
             <div class="flex-fill d-flex">
-                <v-textarea v-model="item.notes" label="notes"
+                <v-textarea :model-value="item.notes" @change="item.notes = $event.target.value" label="notes"
                     class="d-flex flex-column fill-height mr-3" hide-details="true"></v-textarea>
 
                 <div class="">
