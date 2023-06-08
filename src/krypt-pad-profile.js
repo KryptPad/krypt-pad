@@ -38,6 +38,7 @@ Profile.from = function (json) {
         const item = new Item(i.categoryId, i.title);
         item.id = i.id;
         item.notes = i.notes;
+        item.starred = i.starred;
         // Add category to profile
         profile.items.push(item);
 
@@ -67,6 +68,7 @@ class Item{
         this.title = title || 'Untitled';
         this.notes = null;
         this.id = crypto.randomUUID();
+        this.starred = false;
         // Link to a category
         this.categoryId = categoryId;
 

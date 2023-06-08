@@ -132,12 +132,12 @@ const kpAPI = reactive({
      * @param {Category} category 
      */
     async deleteCategory(category) {
-        console.log("delete category")
         if (await kpAPI.confirmDialog?.confirm("Are you sure you want to delete this category?")) {
             // Remove category from list
             const index = kpAPI.profile?.categories.indexOf(category);
             if (index > -1) {
                 kpAPI.profile?.categories.splice(index, 1);
+                // TODO: Set all item category ids with matching category id to null
             }
 
         }
@@ -149,20 +149,16 @@ const kpAPI = reactive({
      * @param {String} title
      */
     async addItemAsync(categoryId, title){
-        console.log("add item to", kpAPI.profile)
         const item = new Item(categoryId, title);
         // Add the item to the global items list
         kpAPI.profile.items.push(item);
         
-
         return item;
     }
 });
 
 function watchProfile(profile){
     watch(profile, async () => {
-        
-        //await nextTick();
         // Commit the profile
         console.log("watcher fired")
         await kpAPI.commitProfileAsync();

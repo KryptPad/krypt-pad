@@ -22,8 +22,12 @@
       <v-list>
 
         <!-- All items -->
-        <v-list-item @click="categorySelected(null)">
+        <v-list-item @click="categorySelected(null)" prepend-icon="mdi-all-inclusive">
           <v-list-item-title>ALL</v-list-item-title>
+        </v-list-item>
+
+        <v-list-item @click="categorySelected(null, true)" prepend-icon="mdi-star">
+          <v-list-item-title>STARRED</v-list-item-title>
         </v-list-item>
 
         <!-- User defined categories -->
@@ -60,6 +64,9 @@
     <v-container fluid class="d-flex flex-wrap">
       <v-card v-for="item in filteredItems" :key="item.id" width="20rem" @click="itemSelected(item)" class="mr-3 mb-3">
         <v-card-title>{{ item.title }}</v-card-title>
+        <v-card-actions>
+          <v-btn icon="mdi-star" :color="item.starred ? 'yellow' : null" @click.stop="item.starred = !item.starred"></v-btn>
+        </v-card-actions>
       </v-card>
     </v-container>
 
@@ -81,16 +88,18 @@ kpAPI.redirectToStartWhenNoProfile();
 
 const isAdding = ref(false);
 const selectedCategory = ref(null);
+const allStarred = ref(false);
 
 // Computed
 const filteredItems = computed(() => {
-  return kpAPI.profile?.items?.filter((item) => !selectedCategory.value || selectedCategory.value && item.categoryId === selectedCategory.value.id);
+  return kpAPI.profile?.items?.filter((item) => !allStarred.value || allStarred.value === item.starred || !selectedCategory.value || selectedCategory.value && item.categoryId === selectedCategory.value.id);
 });
 
 // Event handlers
-function categorySelected(category) {
-  console.log(category)
+function categorySelected(category, starred) {
+  console.log(starred)
   selectedCategory.value = category;
+  allStarred.value = starred;
 }
 
 async function addItemAsync() {
