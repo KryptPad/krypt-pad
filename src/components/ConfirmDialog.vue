@@ -38,7 +38,6 @@ let confirmResolve = null;
  * @param {String} message 
  */
 function confirm(message) {
-    console.log("fsfsdfdf")
     showDialog.value = true;
     return new Promise((resolve) => {
         confirmResolve = resolve;
