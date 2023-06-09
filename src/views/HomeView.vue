@@ -92,7 +92,7 @@ const allStarred = ref(false);
 
 // Computed
 const filteredItems = computed(() => {
-  return kpAPI.profile?.items?.filter((item) => !allStarred.value || allStarred.value === item.starred || !selectedCategory.value || selectedCategory.value && item.categoryId === selectedCategory.value.id);
+  return kpAPI.profile?.items?.filter((item) => !allStarred.value && !selectedCategory.value || allStarred.value === item.starred && !selectedCategory.value || selectedCategory.value && item.categoryId === selectedCategory.value.id);
 });
 
 // Event handlers
@@ -107,7 +107,6 @@ async function addItemAsync() {
   const item = await kpAPI.addItemAsync(selectedCategory.value?.id, null);
   router.push({ name: 'item', params: { id: item.id } });
 }
-
 
 function itemSelected(item){
   router.push({ name: 'item', params: { id: item.id } });

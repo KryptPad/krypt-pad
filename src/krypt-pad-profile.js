@@ -26,8 +26,7 @@ Profile.from = function (json) {
 
     // Create the categories
     for (const c of profileObject.categories) {
-        const category = new Category(c.title);
-        category.id = c.id;
+        const category = new Category(c.id, c.title);
         // Add category to profile
         profile.categories.push(category);
 
@@ -35,8 +34,7 @@ Profile.from = function (json) {
 
     // Create the items
     for (const i of profileObject.items) {
-        const item = new Item(i.categoryId, i.title);
-        item.id = i.id;
+        const item = new Item(i.id, i.categoryId, i.title);
         item.notes = i.notes;
         item.starred = i.starred;
         // Add category to profile
@@ -52,9 +50,18 @@ Profile.from = function (json) {
  * Category for organizing items.
  */
 class Category {
-    constructor(title) {
+    /**
+     * Creates a new category. If no id is passed, a new one is generated.
+     * @param {String} id 
+     * @param {String} title 
+     */
+    constructor(id, title) {
         this.title = title;
-        this.id = crypto.randomUUID();
+        if (!id) {
+            this.id = crypto.randomUUID();
+        } else {
+            this.id = id;
+        }
 
     }
 
@@ -63,21 +70,41 @@ class Category {
 /**
  * Wrapper for user defined data to encrypt. Contains fields and notes
  */
-class Item{
-    constructor(categoryId, title){
+class Item {
+    /**
+     * Creates a new item. If no id is passed, a new one is generated.
+     * @param {String} id 
+     * @param {String} categoryId 
+     * @param {String} title 
+     */
+    constructor(id, categoryId, title) {
+        if (!id) {
+            this.id = crypto.randomUUID();
+        } else {
+            this.id = id;
+        }
         this.title = title || 'Untitled';
         this.notes = null;
-        this.id = crypto.randomUUID();
         this.starred = false;
         // Link to a category
         this.categoryId = categoryId;
+        // Fields
+        this.fields = [];
 
     }
 
 }
 
-class Field{
-    constructor(name, value){
+/**
+ * User defined fields for items
+ */
+class Field {
+    /**
+     * Creates a new item.
+     * @param {String} name 
+     * @param {String} value 
+     */
+    constructor(name, value) {
         this.name = name;
         this.value = value;
     }

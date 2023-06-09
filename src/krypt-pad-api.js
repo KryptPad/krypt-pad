@@ -149,7 +149,7 @@ const kpAPI = reactive({
      * @param {String} title
      */
     async addItemAsync(categoryId, title){
-        const item = new Item(categoryId, title);
+        const item = new Item(null, categoryId, title);
         // Add the item to the global items list
         kpAPI.profile.items.push(item);
         

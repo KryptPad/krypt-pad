@@ -21,6 +21,20 @@
 
                 <div class="">
                     Add any additioal data fields you need.
+
+                    <v-btn v-if="!isEditing" color="secondary" @click="isEditing = true" block="true">ADD FIELD</v-btn>
+
+                    <v-card v-else class="my-3" @keypress.enter="addField" @keypress.esc="isEditing = false">
+                        <v-card-text>
+                            <v-text-field label="field name" placeholder="e.g. password"></v-text-field>
+                        </v-card-text>
+                        <v-card-actions>
+                            <v-btn color="primary" icon="mdi-check" class="mr-3" @click="addField"></v-btn>
+                            <v-btn icon="mdi-close" @click="isEditing = false"></v-btn>
+                        </v-card-actions>
+                    </v-card>
+
+
                 </div>
             </div>
         </v-container>
@@ -28,12 +42,19 @@
 </template>
 
 <script setup>
-import { inject } from 'vue';
+import { ref, inject } from 'vue';
 const kpAPI = inject("kpAPI");
 kpAPI.redirectToStartWhenNoProfile();
 
 const props = defineProps({ id: String });
+const isEditing = ref(false);
 const item = kpAPI.profile.items.find((item) => item.id === props.id);
+
+// Event handlers
+function addField() {
+
+    isEditing.value = false;
+}
 
 
 </script>
