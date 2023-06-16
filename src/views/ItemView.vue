@@ -22,16 +22,24 @@
                 <div class="">
                     Add any additioal data fields you need.
 
-                    <v-btn v-if="!isEditing" color="secondary" @click="isEditing = true" block="true">ADD FIELD</v-btn>
+                    <v-btn v-if="!isEditing" color="secondary" @click="isEditing = true" :block="true">ADD FIELD</v-btn>
 
                     <v-card v-else class="my-3" @keypress.enter="addField" @keypress.esc="isEditing = false">
                         <v-card-text>
-                            <v-text-field label="field name" placeholder="e.g. password"></v-text-field>
-                        </v-card-text>
-                        <v-card-actions>
+                            <v-text-field v-model="fieldName" label="field name" placeholder="e.g. password"
+                                autofocus></v-text-field>
                             <v-btn color="primary" icon="mdi-check" class="mr-3" @click="addField"></v-btn>
                             <v-btn icon="mdi-close" @click="isEditing = false"></v-btn>
-                        </v-card-actions>
+                        </v-card-text>
+
+                    </v-card>
+
+                    <v-card v-for="(field, index) in item.fields" :key="index" class="mt-2">
+                        <v-card-text>
+                            <name-value :field="field" @renamed="renameField"></name-value>
+
+                        </v-card-text>
+
                     </v-card>
 
 
@@ -42,18 +50,30 @@
 </template>
 
 <script setup>
+import { Field } from '@/krypt-pad-profile';
 import { ref, inject } from 'vue';
+import NameValue from '@/components/NameValue.vue';
+
 const kpAPI = inject("kpAPI");
 kpAPI.redirectToStartWhenNoProfile();
 
 const props = defineProps({ id: String });
 const isEditing = ref(false);
+const fieldName = ref(null);
 const item = kpAPI.profile.items.find((item) => item.id === props.id);
 
 // Event handlers
 function addField() {
-
     isEditing.value = false;
+    // Add the field to the profile
+    item.fields.push(new Field(fieldName.value));
+    // Clear field name
+    fieldName.value = null;
+}
+
+// Renames a field
+function renameField(args) {
+    args.field.name = args.fieldName;
 }
 
 

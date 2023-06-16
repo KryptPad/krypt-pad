@@ -37,6 +37,11 @@ Profile.from = function (json) {
         const item = new Item(i.id, i.categoryId, i.title);
         item.notes = i.notes;
         item.starred = i.starred;
+        
+        for (const field of i.fields){
+            item.fields.push(new Field(field.name, field.value));
+        }
+        
         // Add category to profile
         profile.items.push(item);
 
