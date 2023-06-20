@@ -6,7 +6,7 @@ import { decryptAsync, encryptAsync } from '@/krypto';
 const kpAPI = reactive({
     fileOpened: false,
     fileName: null,
-    profile: reactive({}),
+    profile: null,
     passphrase: null,
     router: null,
     route: null,
@@ -18,6 +18,7 @@ const kpAPI = reactive({
      * Redirects to the Start page when there is no profile
      */
     redirectToStartWhenNoProfile(){
+        console.log('Redirecting to start page')
         if (!kpAPI.profile){
             // Go to start page
             kpAPI.router?.push({ name: "start" });
