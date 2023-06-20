@@ -47,7 +47,7 @@
 
           <v-tooltip text="Donate">
             <template v-slot:activator="{ props }">
-              <v-list-item v-bind="props" prepend-icon="mdi-heart" title="Donate" value="donate"></v-list-item>
+              <v-list-item v-bind="props" prepend-icon="mdi-heart" title="Donate" value="donate" :to="{name: 'donate'}"></v-list-item>
             </template>
           </v-tooltip>
 
