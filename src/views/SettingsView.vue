@@ -3,9 +3,9 @@
     <v-main :scrollable="true">
         <v-container class="">
 
-            <div class="pb-3">
+            <h1>
                 Settings
-            </div>
+            </h1>
 
             <div class="d-flex">
                 <v-card class="pa-3">

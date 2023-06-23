@@ -19,10 +19,18 @@
             </template>
 
             <v-list>
-              <v-list-item v-for="(item, itemIndex) in menu.items" :key="itemIndex" :value="itemIndex"
-                @click="item.handler">
-                <v-list-item-title>{{ item.title }}</v-list-item-title>
-              </v-list-item>
+              <template v-for="(item, itemIndex) in menu.items" :key="itemIndex">
+
+                <v-list-item v-if="!item.divider" :value="itemIndex" @click="item.handler">
+                  <v-list-item-title>{{ item.title }}</v-list-item-title>
+                </v-list-item>
+
+                <v-divider v-else></v-divider>
+
+              </template>
+
+
+
             </v-list>
           </v-menu>
 
@@ -34,16 +42,14 @@
 
       <!-- App side bar -->
       <v-navigation-drawer permanent rail>
-
-        <!-- Top icons -->
         <v-list nav class="d-flex flex-column h-100">
+          <!-- Top icons -->
           <v-tooltip text="Home">
             <template v-slot:activator="{ props }">
               <v-list-item v-bind="props" prepend-icon="mdi-home-city" title="Home" value="home"
                 :to="{ name: 'home' }"></v-list-item>
             </template>
           </v-tooltip>
-
 
           <v-tooltip text="Donate">
             <template v-slot:activator="{ props }">
@@ -52,6 +58,12 @@
             </template>
           </v-tooltip>
 
+          <v-tooltip text="About">
+            <template v-slot:activator="{ props }">
+              <v-list-item v-bind="props" prepend-icon="mdi-information" title="About" value="about"
+                :to="{ name: 'about' }"></v-list-item>
+            </template>
+          </v-tooltip>
 
           <!-- Bottom icons -->
           <v-tooltip text="Settings">
@@ -107,12 +119,20 @@ let passphraseResolve;
 // Define menu items
 const menuItems = [
   {
-    title: "File",
+    title: 'File',
     items: [
-      { title: "Create New File", handler: kpAPI.createNewFileAsync },
-      { title: "Import KDF File" },
-      { title: "Open File", handler: kpAPI.openExistingFileAsync },
-      { title: "Close File", handler: kpAPI.closeFile }
+      { title: 'Create New File', handler: kpAPI.createNewFileAsync },
+      { title: 'Import KDF File' },
+      { divider: true },
+      { title: 'Open File', handler: kpAPI.openExistingFileAsync },
+      { divider: true },
+      { title: 'Close File', handler: kpAPI.closeFile },
+    ]
+  },
+  {
+    title: 'Tools',
+    items: [
+      { title: 'Password Generator...', handler: null },
     ]
   }
 ];

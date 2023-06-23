@@ -97,7 +97,6 @@ const filteredItems = computed(() => {
 
 // Event handlers
 function categorySelected(category, starred) {
-  console.log(starred)
   selectedCategory.value = category;
   allStarred.value = starred;
 }

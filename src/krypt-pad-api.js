@@ -18,8 +18,9 @@ const kpAPI = reactive({
      * Redirects to the Start page when there is no profile
      */
     redirectToStartWhenNoProfile(){
-        console.log('Redirecting to start page')
+        
         if (!kpAPI.profile){
+            console.log('Redirecting to start page')
             // Go to start page
             kpAPI.router?.push({ name: "start" });
         }
