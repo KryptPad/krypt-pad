@@ -37,11 +37,15 @@ Profile.from = function (json) {
         const item = new Item(i.id, i.categoryId, i.title);
         item.notes = i.notes;
         item.starred = i.starred;
-        
-        for (const field of i.fields){
+        console.log(item)
+        // Look up category and assign it
+        item.category = profile.categories.find((c) => c.id === item.categoryId);
+
+        // Add fields to the item
+        for (const field of i.fields) {
             item.fields.push(new Field(field.name, field.value));
         }
-        
+
         // Add category to profile
         profile.items.push(item);
 
@@ -93,6 +97,7 @@ class Item {
         this.starred = false;
         // Link to a category
         this.categoryId = categoryId;
+        this.category = null;
         // Fields
         this.fields = [];
 

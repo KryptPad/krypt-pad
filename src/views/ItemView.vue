@@ -1,6 +1,7 @@
 <template>
     <v-main v-if="item" :scrollable="true">
         <v-container class="d-flex flex-column h-100 ">
+
             <v-row class="flex-grow-0">
                 <v-col>
                     <!-- We are not using v-model here because v-model.lazy does not work on custom components. And We
@@ -15,14 +16,14 @@
                 </v-col>
             </v-row>
 
-            <div class="flex-fill d-flex">
+            <div class="flex-fill d-flex mb-3">
                 <v-textarea :model-value="item.notes" @change="item.notes = $event.target.value" label="notes"
                     class="d-flex flex-column fill-height mr-3" hide-details="true"></v-textarea>
 
                 <div class="">
                     Add any additioal data fields you need.
 
-                    <v-btn v-if="!isEditing" color="secondary" @click="isEditing = true" :block="true">ADD FIELD</v-btn>
+                    <v-btn v-if="!isEditing" color="secondary" variant="tonal" @click="isEditing = true" :block="true">ADD FIELD</v-btn>
 
                     <v-card v-else class="my-3" @keypress.enter="addField" @keypress.esc="isEditing = false">
                         <v-card-text>
@@ -36,7 +37,7 @@
 
                     <v-card v-for="(field, index) in item.fields" :key="index" class="mt-2">
                         <v-card-text>
-                            <name-value :field="field" @renamed="renameField"></name-value>
+                            <name-value :field="field" @renamed="field.name = args.fieldName"></name-value>
 
                         </v-card-text>
 
@@ -45,6 +46,13 @@
 
                 </div>
             </div>
+
+            <v-btn-group>
+                <v-btn color="red-accent-2" variant="tonal" prepend-icon="mdi-delete" text="DELETE" @click="deleteItem"></v-btn>
+            </v-btn-group>
+
+            <confirm-dialog ref="confirmDialog1"></confirm-dialog>
+
         </v-container>
     </v-main>
 </template>
@@ -53,14 +61,17 @@
 import { Field } from '@/krypt-pad-profile';
 import { ref, inject } from 'vue';
 import NameValue from '@/components/NameValue.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 
 const kpAPI = inject("kpAPI");
 kpAPI.redirectToStartWhenNoProfile();
 
+const confirmDialog1 = ref(null);
 const props = defineProps({ id: String });
 const isEditing = ref(false);
 const fieldName = ref(null);
 const item = kpAPI.profile.items.find((item) => item.id === props.id);
+
 
 // Event handlers
 function addField() {
@@ -71,11 +82,12 @@ function addField() {
     fieldName.value = null;
 }
 
-// Renames a field
-function renameField(args) {
-    args.field.name = args.fieldName;
+async function deleteItem()
+{
+    if (await confirmDialog1.value.confirm('Are you sure you want to delete this item?')){
+        console.log(kpAPI.profile.items)
+    }
 }
-
 
 </script>
 

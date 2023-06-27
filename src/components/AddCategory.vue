@@ -1,7 +1,7 @@
 <template>
     <div class="mb-1">
         <v-text-field v-model="title" type="text" label="category name" :rules="rules" hide-details="auto" class="mb-3"
-            autofocus>
+            @keypress.enter="addCategory" autofocus>
         </v-text-field>
 
         <v-btn color="primary" icon="mdi-check" class="mr-3" @click="addCategory"></v-btn>
@@ -23,9 +23,10 @@ const emit = defineEmits(['closed']);
 
 // Event handlers
 function addCategory() {
+    if (!title.value){ return; }
     // Add the category to the profile
     kpAPI.profile.categories.push(new Category(null, title));
-    
+
     close();
 }
 
