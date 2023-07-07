@@ -139,7 +139,11 @@ const kpAPI = reactive({
             const index = kpAPI.profile?.categories.indexOf(category);
             if (index > -1) {
                 kpAPI.profile?.categories.splice(index, 1);
-                // TODO: Set all item category ids with matching category id to null
+                // Set all item category ids with matching category id to null
+                const matchingItems = kpAPI.profile?.items.filter((i) => i.categoryId === category.id);
+                for (const item of matchingItems ){
+                    item.categoryId = null;
+                }
             }
 
         }

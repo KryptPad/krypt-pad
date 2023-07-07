@@ -38,9 +38,7 @@ Profile.from = function (json) {
         item.notes = i.notes;
         item.starred = i.starred;
         console.log(item)
-        // Look up category and assign it
-        item.category = profile.categories.find((c) => c.id === item.categoryId);
-
+        
         // Add fields to the item
         for (const field of i.fields) {
             item.fields.push(new Field(field.name, field.value));
@@ -97,7 +95,6 @@ class Item {
         this.starred = false;
         // Link to a category
         this.categoryId = categoryId;
-        this.category = null;
         // Fields
         this.fields = [];
 

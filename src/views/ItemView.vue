@@ -11,8 +11,8 @@
                         placeholder="enter the name of the card (e.g. My Bank Account)"></v-text-field>
                 </v-col>
                 <v-col>
-                    <v-combobox v-model="item.categoryId" class="flex-grow-0" label="category"
-                        :items="kpAPI.profile?.categories" item-value="id" :return-object="false"></v-combobox>
+                    <v-combobox v-model="item.categoryId" class="flex-grow-0" label="category" :items="categories"
+                        item-value="id" :return-object="false"></v-combobox>
                 </v-col>
             </v-row>
 
@@ -23,7 +23,8 @@
                 <div class="">
                     Add any additioal data fields you need.
 
-                    <v-btn v-if="!isEditing" color="secondary" variant="tonal" @click="isEditing = true" :block="true">ADD FIELD</v-btn>
+                    <v-btn v-if="!isEditing" color="secondary" variant="tonal" @click="isEditing = true" :block="true">ADD
+                        FIELD</v-btn>
 
                     <v-card v-else class="my-3" @keypress.enter="addField" @keypress.esc="isEditing = false">
                         <v-card-text>
@@ -37,8 +38,7 @@
 
                     <v-card v-for="(field, index) in item.fields" :key="index" class="mt-2">
                         <v-card-text>
-                            <name-value :field="field" @renamed="field.name = args.fieldName"></name-value>
-
+                            <name-value v-model="item.fields[index]" @delete="onDeleteField"></name-value>
                         </v-card-text>
 
                     </v-card>
@@ -47,10 +47,18 @@
                 </div>
             </div>
 
-            <v-btn-group>
-                <v-btn color="red-accent-2" variant="tonal" prepend-icon="mdi-delete" text="DELETE" @click="deleteItem"></v-btn>
-            </v-btn-group>
+            <div class="d-flex align-items-center">
+                <v-btn-group>
+                    <v-btn variant="tonal" prepend-icon="mdi-arrow-left" text="BACK" @click="backHome"></v-btn>
+                </v-btn-group>
 
+                <v-btn-group class="ml-auto">
+
+                    <v-btn color="red-accent-2" variant="tonal" prepend-icon="mdi-delete" text="DELETE"
+                        @click="deleteItem"></v-btn>
+                </v-btn-group>
+
+            </div>
             <confirm-dialog ref="confirmDialog1"></confirm-dialog>
 
         </v-container>
@@ -60,8 +68,12 @@
 <script setup>
 import { Field } from '@/krypt-pad-profile';
 import { ref, inject } from 'vue';
+import { useRouter } from 'vue-router';
 import NameValue from '@/components/NameValue.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import { computed } from 'vue';
+
+const router = useRouter();
 
 const kpAPI = inject("kpAPI");
 kpAPI.redirectToStartWhenNoProfile();
@@ -72,6 +84,9 @@ const isEditing = ref(false);
 const fieldName = ref(null);
 const item = kpAPI.profile.items.find((item) => item.id === props.id);
 
+const categories = computed(() => {
+    return [{ title: 'None', id: null }, ...kpAPI.profile.categories];
+})
 
 // Event handlers
 function addField() {
@@ -82,12 +97,39 @@ function addField() {
     fieldName.value = null;
 }
 
-async function deleteItem()
-{
-    if (await confirmDialog1.value.confirm('Are you sure you want to delete this item?')){
-        console.log(kpAPI.profile.items)
+function backHome() {
+    router.back();
+}
+
+async function deleteItem() {
+    if (!await confirmDialog1.value.confirm('Are you sure you want to delete this item?')) {
+        return;
+
+    }
+
+    // Remove item from list
+    const index = kpAPI.profile?.items.indexOf(item);
+    if (index > -1) {
+        kpAPI.profile?.items.splice(index, 1);
+        // Go back to the home page
+        router.back();
     }
 }
+
+async function onDeleteField(field) {
+    if (!await confirmDialog1.value.confirm('Are you sure you want to delete this field?')) {
+        return;
+
+    }
+
+    // Remove field from list
+    const index = item.fields.indexOf(field);
+    if (index > -1) {
+        item.fields.splice(index, 1);
+
+    }
+}
+
 
 </script>
 

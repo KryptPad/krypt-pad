@@ -68,7 +68,7 @@
       <v-card v-for="item in filteredItems" :key="item.id" width="20rem" @click="itemSelected(item)" class="mr-3 mb-3">
         <v-card-title class="d-flex">
           <span class="mr-3">{{ item.title }}</span>
-          <v-chip class="ml-auto " color="info" v-if="item.category">{{ item.category?.title }}</v-chip>
+          <v-chip class="ml-auto " color="info" v-if="item.categoryId">{{ getCategory(item)?.title }}</v-chip>
         </v-card-title>
 
         <v-card-actions>
@@ -87,7 +87,6 @@ import AddCategory from '@/components/AddCategory.vue';
 import CategoryListItem from '@/components/CategoryListItem.vue';
 import { useRouter } from 'vue-router';
 import { computed } from 'vue';
-import { watch } from 'vue';
 
 const router = useRouter();
 
@@ -95,6 +94,7 @@ const router = useRouter();
 const kpAPI = inject("kpAPI");
 kpAPI.redirectToStartWhenNoProfile();
 
+const items = kpAPI.profile?.items;
 const isAdding = ref(false);
 const selectedCategory = ref(null);
 const allStarred = ref(false);
@@ -102,7 +102,7 @@ const searchText = ref(null);
 
 // Computed
 const filteredItems = computed(() => {
-  return kpAPI.profile?.items?.filter((item) =>
+  return items?.filter((item) =>
     // Filter for category and starred
     (!allStarred.value && !selectedCategory.value
       || allStarred.value === item.starred && !selectedCategory.value
@@ -110,6 +110,16 @@ const filteredItems = computed(() => {
     // Filter search text
     && (!searchText.value || item.title.toLowerCase().includes(searchText.value?.toLowerCase())));
 });
+
+/**
+ * Gets the category for an item
+ * @param {Item} item 
+ */
+function getCategory(item){
+  // Look up category and assign it
+  const category = kpAPI.profile?.categories.find((c) => c.id === item.categoryId);
+  return category;
+}
 
 // Event handlers
 function categorySelected(category, starred) {
@@ -126,11 +136,6 @@ async function addItemAsync() {
 function itemSelected(item) {
   router.push({ name: 'item', params: { id: item.id } });
 }
-
-// Watchers
-watch(searchText, () => {
-
-});
 
 </script>
 

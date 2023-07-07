@@ -1,7 +1,8 @@
 <template>
     <!-- When in normal mode, the field's value can be edited -->
     <div v-if="!isEditing" class="d-flex" @keypress.enter="saveField">
-        <v-text-field :label="field.name" :hide-details="true" class="mr-3"></v-text-field>
+        <v-text-field :model-value="internalField.value" @change="onValueChange" :label="internalField.name" :hide-details="true"
+            class="mr-3"></v-text-field>
 
         <v-menu>
             <template v-slot:activator="{ props }">
@@ -13,7 +14,7 @@
                     <v-list-item-title>Rename</v-list-item-title>
                 </v-list-item>
 
-                <v-list-item prepend-icon="mdi-delete" value="delete">
+                <v-list-item prepend-icon="mdi-delete" value="delete" @click="deleteField">
                     <v-list-item-title>Delete</v-list-item-title>
                 </v-list-item>
             </v-list>
@@ -22,27 +23,37 @@
 
     <!-- In edit mode, the field's name can be edited -->
     <template v-else>
-        <v-text-field v-model="fieldName" label="field name" placeholder="e.g. password" autofocus></v-text-field>
+        <v-text-field v-model="internalField.name" label="name" placeholder="e.g. password" @keypress.enter="saveField" autofocus></v-text-field>
         <v-btn color="primary" icon="mdi-check" class="mr-3" @click="saveField"></v-btn>
         <v-btn icon="mdi-close" @click="isEditing = false"></v-btn>
     </template>
 </template>
 
 <script setup>
-import { Field } from '@/krypt-pad-profile';
 import { ref } from 'vue';
 
-const props = defineProps({ field: Field });
-const emit = defineEmits(['renamed']);
+const props = defineProps({ modelValue: Object });
+const emit = defineEmits(['delete', 'update:modelValue']);
 
 const isEditing = ref(false);
-const fieldName = ref(props.field?.name);
+const internalField = ref(props.modelValue);
 
 // Event handler
 function saveField() {
-    emit("renamed", { field: props.field, fieldName: fieldName.value });
+    emit('update:modelValue', internalField);
 
     isEditing.value = false;
+}
+
+function onValueChange(ev) {
+    internalField.value.value = ev.target.value;
+    // Update v-model
+    emit('update:modelValue', internalField);
+}
+
+function deleteField(){
+    emit('delete', internalField);
+    
 }
 
 </script>
