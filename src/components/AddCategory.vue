@@ -1,7 +1,7 @@
 <template>
     <div class="mb-1">
         <v-text-field v-model="title" type="text" label="category name" :rules="rules" hide-details="auto" class="mb-3"
-            @keypress.enter="addCategory" autofocus>
+            @keypress.enter="addCategory" @keydown.esc="close" autofocus>
         </v-text-field>
 
         <v-btn color="primary" icon="mdi-check" class="mr-3" @click="addCategory"></v-btn>

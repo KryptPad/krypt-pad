@@ -47,7 +47,7 @@
           <v-tooltip text="Home">
             <template v-slot:activator="{ props }">
               <v-list-item v-bind="props" prepend-icon="mdi-home-city" title="Home" value="home"
-                :to="{ name: 'home' }"></v-list-item>
+                :to="homeRoute"></v-list-item>
             </template>
           </v-tooltip>
 
@@ -97,7 +97,7 @@
 import TitleBar from './components/TitleBar.vue';
 import PassphrasePrompt from './components/PassphrasePrompt.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
-import { provide, ref } from 'vue';
+import { computed, provide, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 
 // Import the krypt-pad api
@@ -140,6 +140,9 @@ const menuItems = [
   }
 ];
 
+const homeRoute = computed(() => {
+  return { name: kpAPI.profile ? 'home' : 'start' }  ;
+})
 
 // Create callback handler for passprhase prompt. When passphrase is required, this callback will be fired.
 kpAPI.onRequirePassphrase((isNew) => {
