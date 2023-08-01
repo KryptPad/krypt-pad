@@ -1,8 +1,8 @@
 <template>
     <!-- When in normal mode, the field's value can be edited -->
     <div v-if="!isEditing" class="d-flex" @keypress.enter="saveField">
-        <v-text-field :model-value="internalField.value" @change="onValueChange" :label="internalField.name" :hide-details="true"
-            class="mr-3"></v-text-field>
+        <v-text-field :model-value="internalField.value" @change="onValueChange" :label="internalField.name"
+            :hide-details="true" class="mr-3"></v-text-field>
 
         <v-menu>
             <template v-slot:activator="{ props }">
@@ -23,20 +23,23 @@
 
     <!-- In edit mode, the field's name can be edited -->
     <template v-else>
-        <v-text-field v-model="internalField.name" label="name" placeholder="e.g. password" @keypress.enter="saveField" autofocus></v-text-field>
+        <v-text-field v-model="internalField.name" label="name" placeholder="e.g. password" @keypress.enter="saveField"
+            autofocus></v-text-field>
         <v-btn color="primary" icon="mdi-check" class="mr-3" @click="saveField"></v-btn>
         <v-btn icon="mdi-close" @click="isEditing = false"></v-btn>
     </template>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+
+import { ref, toRefs } from 'vue';
 
 const props = defineProps({ modelValue: Object });
 const emit = defineEmits(['delete', 'update:modelValue']);
 
 const isEditing = ref(false);
-const internalField = ref(props.modelValue);
+const { modelValue } = toRefs(props);
+const internalField = modelValue.value ;
 
 // Event handler
 function saveField() {
@@ -46,14 +49,14 @@ function saveField() {
 }
 
 function onValueChange(ev) {
-    internalField.value.value = ev.target.value;
+    internalField.value = ev.target.value;
     // Update v-model
     emit('update:modelValue', internalField);
 }
 
-function deleteField(){
+function deleteField() {
     emit('delete', internalField);
-    
+
 }
 
 </script>

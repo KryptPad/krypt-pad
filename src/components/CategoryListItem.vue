@@ -47,7 +47,7 @@ const props = defineProps({
 })
 
 const isEditing = ref(false);
-const title = ref(props.category?.title);
+const title = ref();
 const rules = [
     value => !!value || 'Required.'
 ];
