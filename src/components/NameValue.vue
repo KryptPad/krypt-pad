@@ -38,8 +38,7 @@ const props = defineProps({ modelValue: Object });
 const emit = defineEmits(['delete', 'update:modelValue']);
 
 const isEditing = ref(false);
-const { modelValue } = toRefs(props);
-const internalField = modelValue.value ;
+const { modelValue: internalField } = toRefs(props);
 
 // Event handler
 function saveField() {

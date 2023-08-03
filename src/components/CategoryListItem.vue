@@ -1,6 +1,6 @@
 <template>
     <!-- Category list item -->
-    <v-list-item v-if="!isEditing" @click="emit('click', $event)">
+    <v-list-item v-if="!isEditing" @click="emit('click', $event)" :active="active">
 
         <v-list-item-title>{{ category?.title }}</v-list-item-title>
 
@@ -25,15 +25,15 @@
     </v-list-item>
 
     <!-- Edit category name -->
-    <v-list-item v-else>
+    <v-list-item v-else @keypress.enter="renameCategory(category)" @keydown.esc="close()">
 
         <div class="mb-1" @click.stop>
             <v-text-field v-model="title" type="text" label="category name" :rules="rules" hide-details="auto" class="mb-3"
-                autofocus>
+                autofocus >
             </v-text-field>
 
-            <v-btn color="primary" icon="mdi-check" class="mr-3" @click="renameCategoryAsync(category)"></v-btn>
-            <v-btn icon="mdi-close" @click="isEditing = false"></v-btn>
+            <v-btn color="primary" icon="mdi-check" class="mr-3" @click="renameCategory(category)"></v-btn>
+            <v-btn icon="mdi-close" @click="close()"></v-btn>
         </div>
     </v-list-item>
 </template>
@@ -43,7 +43,9 @@ import kpAPI from '@/krypt-pad-api';
 import { ref } from 'vue';
 
 const props = defineProps({
-    category: Object
+    // A reference to the category
+    category: Object,
+    active: Boolean
 })
 
 const isEditing = ref(false);
@@ -55,12 +57,19 @@ const rules = [
 const emit = defineEmits(['click']);
 
 function editName() {
+    // Set the title field to the category's title so we can rename it.
     title.value = props.category?.title;
     isEditing.value = true;
 }
 
-function renameCategoryAsync(category) {
+function renameCategory(category) {
+    if (!title.value){ return; }
+    // When change is fired, update the category title to trigger updating the profile.
     category.title = title;
+    close();
+}
+
+function close(){
     isEditing.value = false;
 }
 
