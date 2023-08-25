@@ -2,12 +2,16 @@
     <v-main>
         <v-container>
             <h1>Donate</h1>
-            <p>Feel like sending me a tip? Use the QR code below to send any amount of <v-icon icon="mdi-currency-btc" color="yellow"></v-icon> BTC you'd like. Thanks!</p>
-            
-            <div>
-                <img :src="qrCode">
+            <p>Feel like sending me a tip? Use the QR code(s) below to send some crypto. Thanks!</p>
+
+            <div class="d-flex justify-center mt-5">
+                <div class="text-center">
+                    <div><v-icon icon="mdi-currency-btc" color="yellow"></v-icon> BTC</div>
+
+                    <img :src="btcQRCode">
+                </div>
             </div>
-            
+
         </v-container>
 
     </v-main>
@@ -18,16 +22,17 @@
 import { ref } from 'vue';
 import QRCode from 'qrcode';
 
-const qrCode = ref();
+const btcQRCode = ref();
 
 const generateQR = async text => {
     try {
-        qrCode.value = await QRCode.toDataURL(text);
+        btcQRCode.value = await QRCode.toDataURL(text);
 
     } catch (err) {
         console.error(err)
     }
 }
 
- generateQR('bc1q5c4gjd33py30sg9n9jcvgevuxu2fcl3r4j7yuq');
+// BTC
+generateQR('bc1q5c4gjd33py30sg9n9jcvgevuxu2fcl3r4j7yuq');
 </script>

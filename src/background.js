@@ -156,7 +156,7 @@ app.whenReady().then(async () => {
       filters,
     };
 
-    const response = await dialog.showOpenDialog(options);
+    const response = await dialog.showOpenDialog(win, options);
     win.webContents.send("file-selected", response);
 
   });
