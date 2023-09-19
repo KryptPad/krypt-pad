@@ -56,6 +56,10 @@ const kpAPI = reactive({
         const selectedFile = await bridge.showSaveFileDialogAsync();
         if (selectedFile.canceled) { return; }
 
+        // Close open file
+        kpAPI.closeFile();
+
+        // Set new filename
         kpAPI.fileName = selectedFile.filePath;
 
         // Prompt for new passphrase

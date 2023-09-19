@@ -43,10 +43,13 @@ defineExpose({show});
 
 // Events
 function close(){
-    kpAPI.passphrase = passphrase;
+    kpAPI.passphrase = passphrase.value;
     emit("closed", kpAPI.passphrase);
 
     dialogOpen.value = false;
+
+    // Clear the passphrase
+    passphrase.value = null;
 }
 
 </script>

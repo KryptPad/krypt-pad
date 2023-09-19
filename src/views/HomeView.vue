@@ -67,8 +67,10 @@
       <!-- List of items -->
       <v-card v-for="item in filteredItems" :key="item.id" width="20rem" @click="itemSelected(item)" class="mr-3 mb-3">
         <v-card-title class="d-flex">
-          <span class="mr-3">{{ item.title }}</span>
+          <span class="mr-3 text-truncate">{{ item.title }}</span>
+
           <v-chip class="ml-auto " color="info" v-if="item.categoryId">{{ getCategory(item)?.title }}</v-chip>
+
         </v-card-title>
 
         <v-card-actions>
@@ -115,8 +117,8 @@ const filteredItems = computed(() => {
  * Gets the category for an item
  * @param {Item} item 
  */
-function getCategory(item){
-  // Look up category and assign it
+function getCategory(item) {
+  // Look up category and return it
   const category = kpAPI.profile?.categories.find((c) => c.id === item.categoryId);
   return category;
 }

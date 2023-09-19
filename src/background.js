@@ -169,7 +169,7 @@ app.whenReady().then(async () => {
       filters,
     };
 
-    const response = await dialog.showSaveDialog(options);
+    const response = await dialog.showSaveDialog(win, options);
     win.webContents.send("file-selected", response);
 
   });
