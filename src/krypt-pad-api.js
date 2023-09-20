@@ -85,6 +85,10 @@ const kpAPI = reactive({
         const selectedFile = await bridge.showOpenFileDialogAsync();
         if (selectedFile.canceled) { return; }
 
+        // Close open file
+        kpAPI.closeFile();
+
+        // Set new filename
         kpAPI.fileName = selectedFile.filePaths[0];
 
         // Read the file and get the data

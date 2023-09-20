@@ -78,8 +78,8 @@
 
       <!-- Display router view components here -->
       <router-view v-slot="{ Component }">
-        <keep-alive :include="['HomeView']">
-          <component :is="Component" />
+        <keep-alive :include="['HomeView']" :key="kpAPI.fileName">
+          <component :is="Component"  />
         </keep-alive>
       </router-view>
 
@@ -141,7 +141,7 @@ const menuItems = [
 ];
 
 const homeRoute = computed(() => {
-  return { name: kpAPI.profile ? 'home' : 'start' }  ;
+  return { name: kpAPI.profile ? 'home' : 'start' };
 })
 
 // Create callback handler for passprhase prompt. When passphrase is required, this callback will be fired.

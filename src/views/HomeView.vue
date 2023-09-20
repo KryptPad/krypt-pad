@@ -96,7 +96,7 @@ const router = useRouter();
 const kpAPI = inject("kpAPI");
 kpAPI.redirectToStartWhenNoProfile();
 
-const items = kpAPI.profile?.items;
+//const items = kpAPI.profile?.items;
 const isAdding = ref(false);
 const selectedCategory = ref(null);
 const allStarred = ref(false);
@@ -104,7 +104,7 @@ const searchText = ref(null);
 
 // Computed
 const filteredItems = computed(() => {
-  return items?.filter((item) =>
+  return kpAPI.profile?.items?.filter((item) =>
     // Filter for category and starred
     (!allStarred.value && !selectedCategory.value
       || allStarred.value === item.starred && !selectedCategory.value
