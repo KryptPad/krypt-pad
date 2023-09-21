@@ -23,7 +23,6 @@
 <script setup>
 
 import { ref } from 'vue';
-import kpAPI from '@/krypt-pad-api';
 
 // Props
 defineProps({
@@ -35,6 +34,9 @@ const emit = defineEmits(["closed"]);
 const passphrase = ref(null);
 const dialogOpen = ref(false);
 
+/**
+ * Shows the passphrase prompt dialog
+ */
 function show(){
     dialogOpen.value = true;
 }
@@ -43,12 +45,12 @@ defineExpose({show});
 
 // Events
 function close(){
-    kpAPI.passphrase = passphrase.value;
-    emit("closed", kpAPI.passphrase);
+    emit("closed", passphrase.value);
 
+    // Close dialog
     dialogOpen.value = false;
 
-    // Clear the passphrase
+    // Clear the passphrase from the input
     passphrase.value = null;
 }
 

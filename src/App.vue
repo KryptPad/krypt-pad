@@ -21,7 +21,8 @@
             <v-list>
               <template v-for="(item, itemIndex) in menu.items" :key="itemIndex">
 
-                <v-list-item v-if="!item.divider" :value="itemIndex" @click="item.handler">
+                <v-list-item v-if="!item.divider" :value="itemIndex" @click="item.handler"
+                  :disabled="item.enabled !== undefined && item.enabled === false">
                   <v-list-item-title>{{ item.title }}</v-list-item-title>
                 </v-list-item>
 
@@ -79,7 +80,7 @@
       <!-- Display router view components here -->
       <router-view v-slot="{ Component }">
         <keep-alive :include="['HomeView']" :key="kpAPI.fileName">
-          <component :is="Component"  />
+          <component :is="Component" />
         </keep-alive>
       </router-view>
 
@@ -120,25 +121,28 @@ let passphraseResolve;
 //let passphraseReject;
 
 // Define menu items
-const menuItems = [
-  {
-    title: 'File',
-    items: [
-      { title: 'Create New File', handler: kpAPI.createNewFileAsync },
-      { title: 'Import KDF File' },
-      { divider: true },
-      { title: 'Open File', handler: kpAPI.openExistingFileAsync },
-      { divider: true },
-      { title: 'Close File', handler: kpAPI.closeFile },
-    ]
-  },
-  {
-    title: 'Tools',
-    items: [
-      { title: 'Password Generator...', handler: null },
-    ]
-  }
-];
+const menuItems = computed(() => {
+  return [
+    {
+      title: 'File',
+      items: [
+        { title: 'New...', handler: kpAPI.createNewFileAsync },
+        // { title: 'Import KDF File' },
+        { title: 'Open...', handler: kpAPI.openExistingFileAsync },
+        { divider: true },
+        { title: 'Close', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened },
+        { divider: true },
+        { title: 'Save As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened }
+      ]
+    },
+    {
+      title: 'Tools',
+      items: [
+        { title: 'Password Generator...', handler: null },
+      ]
+    }
+  ];
+});
 
 const homeRoute = computed(() => {
   return { name: kpAPI.profile ? 'home' : 'start' };

@@ -94,9 +94,10 @@ const router = useRouter();
 
 // Inject Krypt Pad's core functionality
 const kpAPI = inject("kpAPI");
+
+// Make sure we have a profile loaded or else redirect to the Start page
 kpAPI.redirectToStartWhenNoProfile();
 
-//const items = kpAPI.profile?.items;
 const isAdding = ref(false);
 const selectedCategory = ref(null);
 const allStarred = ref(false);

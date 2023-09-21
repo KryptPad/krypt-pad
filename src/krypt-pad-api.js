@@ -50,7 +50,7 @@ const kpAPI = reactive({
     * Create a new file
     */
     async createNewFileAsync() {
-        // If there is already a file open, prompt the user if they are sure they want to create a new file
+        // TODO: If there is already a file open, prompt the user if they are sure they want to create a new file
 
         // Open save dialog to allow user to save a new file
         const selectedFile = await bridge.showSaveFileDialogAsync();
@@ -63,7 +63,7 @@ const kpAPI = reactive({
         kpAPI.fileName = selectedFile.filePath;
 
         // Prompt for new passphrase
-        await kpAPI._requirePassphraseCallback?.(true);
+        kpAPI.passphrase = await kpAPI._requirePassphraseCallback?.(true);
 
         // Set fileOpen flag
         kpAPI.fileOpened = true;
@@ -75,6 +75,25 @@ const kpAPI = reactive({
         await kpAPI.commitProfileAsync();
 
         kpAPI.router?.push({ name: "home" });
+
+    },
+    /**
+     * Saves the existing open profile as a new file
+     * @returns 
+     */
+    async saveProfileAsAsync() {
+        // Open save dialog to allow user to save a new file
+        const selectedFile = await bridge.showSaveFileDialogAsync();
+        if (selectedFile.canceled) { return; }
+
+        // Set new filename
+        kpAPI.fileName = selectedFile.filePath;
+
+        // Prompt for new passphrase
+        kpAPI.passphrase = await kpAPI._requirePassphraseCallback?.(true);
+
+        // Commit the file once after creation
+        await kpAPI.commitProfileAsync();
 
     },
     /**
@@ -94,11 +113,10 @@ const kpAPI = reactive({
         // Read the file and get the data
         const encryptedJSONString = await bridge.readFileAsync(kpAPI.fileName);
         if (encryptedJSONString) {
-            // Prompt for new passphrase
-
-            const passphrase = await kpAPI._requirePassphraseCallback?.(false);
+            // Prompt for passphrase to decrypt the file
+            kpAPI.passphrase = await kpAPI._requirePassphraseCallback?.(false);
             // Decrypt the json string
-            const jsonString = await decryptAsync(encryptedJSONString, passphrase);
+            const jsonString = await decryptAsync(encryptedJSONString, kpAPI.passphrase);
 
             // Load the profile
             kpAPI.profile = reactive(Profile.from(jsonString));
