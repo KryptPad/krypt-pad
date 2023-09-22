@@ -94,7 +94,7 @@ $transition: background-color 200ms ease-in-out;
 .title-bar {
     height: $title-bar-height;
     -webkit-user-select: none;
-    webkit-user-select: none;
+    user-select: none;
     -webkit-app-region: drag;
     border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }

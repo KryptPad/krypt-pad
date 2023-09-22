@@ -100,12 +100,30 @@ import PassphrasePrompt from './components/PassphrasePrompt.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
 import { computed, provide, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { bridge } from '@/bridge';
+import * as constants from '@/constants';
 
 // Import the krypt-pad api
 import kpAPI from '@/krypt-pad-api';
 
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);
+
+// Register shortcut handlers
+bridge.onHandleShortcut(async (args) => {
+  console.log(args)
+  switch (args) {
+    case constants.SHORTCUT_NEW:
+      await kpAPI.createNewFileAsync();
+      break;
+
+    case constants.SHORTCUT_OPEN:
+      await kpAPI.openExistingFileAsync();
+      break;
+
+  }
+
+});
 
 // Data
 const passphrasePrompter = ref(null);
@@ -162,6 +180,16 @@ kpAPI.onRequirePassphrase((isNew) => {
 function passphraseDialogClosed(passphrase) {
   passphraseResolve(passphrase);
 }
+
+// Methods
+async function getMenu() {
+  // Get the menu from the main process
+  const menu = await bridge.getMenu();
+  console.log(menu)
+
+}
+
+getMenu();
 
 </script>
 

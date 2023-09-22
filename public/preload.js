@@ -1,5 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron')
+//const { SHORTCUT_NEW } = require('./constants.js')
 
+// Shortcut handlers
+let _onHandleShortcut = null;
 // Called when window is restored
 let _onUnmaximize = null
 // Called when window is maximized
@@ -17,6 +20,20 @@ contextBridge.exposeInMainWorld('bridge', {
     toggleMaximizeRestore: () => ipcRenderer.send('toggle-maximize-restore'),
     minimize: () => ipcRenderer.send('minimize'),
     close: () => ipcRenderer.send('close'),
+    /**
+     * Gets the menu created in the main process
+     */
+    getMenu: () => {
+        ipcRenderer.send('get-menu');
+        // Create a promise that waits for the message coming back
+        return new Promise((resolve) => {
+            ipcRenderer.once('menu', (e, response) => {
+                console.log(e, response);
+                resolve(response);
+            });
+        });
+    },
+    onHandleShortcut: (callback) => { _onHandleShortcut = callback },
     onUnmaximize: (callback) => { _onUnmaximize = callback },
     onMaximize: (callback) => { _onMaximize = callback },
     onBlur: (callback) => { _onBlur = callback },
@@ -32,7 +49,6 @@ contextBridge.exposeInMainWorld('bridge', {
         // Create a promise that waits for the message coming back that the user has selected a file
         return new Promise((resolve) => {
             ipcRenderer.once('file-selected', (e, response) => {
-                console.log(e, response);
                 resolve(response);
             });
         });
@@ -126,7 +142,11 @@ ipcRenderer.on('blur', () => { _onBlur?.() })
 // When the window loses focus, blur is fired from main process. This handler invokes a callback.
 ipcRenderer.on('focus', () => { _onFocus?.() })
 
-
+// Handle global shortcuts sent from the main process
+ipcRenderer.on('handle-shortcut', (sender, args) => {
+    console.log(args)
+    _onHandleShortcut?.(args)
+})
 
 
 console.log("preload.js loaded ok")

@@ -1,12 +1,13 @@
 'use strict'
 
-const { app, protocol, BrowserWindow, ipcMain, dialog } = require('electron')
+const { app, protocol, BrowserWindow, ipcMain, dialog, globalShortcut, Menu, MenuItem } = require('electron')
 const windowStateKeeper = require('electron-window-state')
 const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer')
 const path = require('path')
 const { createProtocol } = require('vue-cli-plugin-electron-builder/lib')
 const { readFile, writeFile } = require('fs')
 const { encrypt, decrypt } = require('./krypto')
+const constants = require('@/constants')
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -22,6 +23,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 let win = null;
+const menu = new Menu();
 
 /**
  * Creates the main browser window
@@ -42,8 +44,8 @@ async function createWindow() {
     width: mainWindowState.width,
     height: mainWindowState.height,
     isMaximized: mainWindowState.isMaximized,
-    titleBarStyle: "hidden",
-    frame: false,
+    // titleBarStyle: "hidden",
+    frame: true,
     icon: path.join(__static, "safe.ico"),
     webPreferences: {
 
@@ -76,15 +78,32 @@ async function createWindow() {
 
   }
 
+  // Register listeners to window events. These will send a request to the bridge process through IPC.
   win.on("unmaximize", () => { win.webContents.send("unmaximize") })
-
   win.on("maximize", () => { win.webContents.send("maximize") })
-
   win.on("blur", () => { win.webContents.send("blur") })
-
   win.on("focus", () => { win.webContents.send("focus") })
 
 }
+
+// Create menu structure
+menu.append(new MenuItem({
+  label: 'File',
+  submenu: [{
+    role: '',
+    label: 'New File',
+    accelerator: constants.SHORTCUT_NEW,
+    click: () => { win.webContents.send('handle-shortcut', constants.SHORTCUT_NEW); }
+  },
+  {
+    role: '',
+    label: 'Open File',
+    accelerator: constants.SHORTCUT_OPEN,
+    click: () => { win.webContents.send('handle-shortcut', constants.SHORTCUT_OPEN); }
+  }]
+}));
+
+Menu.setApplicationMenu(menu);
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -113,6 +132,10 @@ app.whenReady().then(async () => {
       console.error('Vue Devtools failed to install:', e.toString())
     }
   }
+
+  // Register global shortcuts
+
+
 
   // Process IPC messages
   ipcMain.on('toggle-maximize-restore', (e) => {
@@ -182,19 +205,29 @@ app.whenReady().then(async () => {
       if (err) { throw err; }
       // Send the data to the render process
       win.webContents.send("file-read", data);
-      
+
     });
 
   });
 
   // Listen to the message to write the contents to the file 
-ipcMain.on('write-file', async (e, fileName, contents) => {
-  writeFile(fileName, contents, (err) => {
-    // Tell the renderer that the main process has written the file.
-    win.webContents.send("file-written", err);
+  ipcMain.on('write-file', async (e, fileName, contents) => {
+    writeFile(fileName, contents, (err) => {
+      // Tell the renderer that the main process has written the file.
+      win.webContents.send("file-written", err);
+    });
+
   });
 
-});
+  // Listen to the message to provide the menu structure to the app
+  ipcMain.on('get-menu', async () => {
+    // Provide the menu to the app
+    const menuItems = [];
+    for (const item of menu.items) {
+      menuItems.push(item.label);
+    }
+    win.webContents.send('menu', menuItems);
+  });
 
   // function validateSender(frame) {
   //   // Value the host of the URL using an actual URL parser and an allowlist
