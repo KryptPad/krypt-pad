@@ -23,7 +23,14 @@
 
                 <v-list-item v-if="!item.divider" :value="itemIndex" @click="item.handler"
                   :disabled="item.enabled !== undefined && item.enabled === false">
-                  <v-list-item-title>{{ item.title }}</v-list-item-title>
+                  <div class="d-flex ">
+                    <v-list-item-title>{{ item.title }}</v-list-item-title>
+
+                    <span v-if="item.accelerator" class="ml-auto text-right text-medium-emphasis"><span class="ml-3">{{
+                      item.accelerator }}</span></span>
+                  </div>
+
+
                 </v-list-item>
 
                 <v-divider v-else></v-divider>
@@ -121,6 +128,9 @@ bridge.onHandleShortcut(async (args) => {
       await kpAPI.openExistingFileAsync();
       break;
 
+    case constants.SHORTCUT_CLOSE:
+      kpAPI.closeFile();
+      break;
   }
 
 });
@@ -144,13 +154,15 @@ const menuItems = computed(() => {
     {
       title: 'File',
       items: [
-        { title: 'New...', handler: kpAPI.createNewFileAsync },
+        { title: 'New File...', handler: kpAPI.createNewFileAsync, accelerator: 'Ctrl + N' },
         // { title: 'Import KDF File' },
-        { title: 'Open...', handler: kpAPI.openExistingFileAsync },
+        { title: 'Open File...', handler: kpAPI.openExistingFileAsync, accelerator: 'Ctrl + O' },
         { divider: true },
-        { title: 'Close', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened },
+        { title: 'Close File', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened, accelerator: 'Ctrl + F4' },
         { divider: true },
-        { title: 'Save As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened }
+        { title: 'Save File As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened },
+        { divider: true },
+        { title: 'Exit', handler: kpAPI.saveProfileAsAsync }
       ]
     },
     {
@@ -181,15 +193,15 @@ function passphraseDialogClosed(passphrase) {
   passphraseResolve(passphrase);
 }
 
-// Methods
-async function getMenu() {
-  // Get the menu from the main process
-  const menu = await bridge.getMenu();
-  console.log(menu)
+// // Methods
+// async function getMenu() {
+//   // Get the menu from the main process
+//   const menu = await bridge.getMenu();
+//   console.log(menu)
 
-}
+// }
 
-getMenu();
+// getMenu();
 
 </script>
 
