@@ -5,11 +5,16 @@
             <p>Feel like sending me a tip? Use the QR code(s) below to send some crypto. Thanks!</p>
 
             <div class="d-flex justify-center mt-5">
-                <div class="text-center">
-                    <div><v-icon icon="mdi-currency-btc" color="yellow"></v-icon> BTC</div>
+                <v-card class="text-center">
+                    <v-card-title>
+                        <div><v-icon icon="mdi-currency-btc" color="yellow"></v-icon> BTC</div>
+                    </v-card-title>
 
-                    <img :src="btcQRCode">
-                </div>
+                    <v-card-item>
+                        <img :src="btcQRCode">
+                    </v-card-item>
+                    
+                </v-card>
             </div>
 
         </v-container>
