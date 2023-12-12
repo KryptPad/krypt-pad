@@ -16,7 +16,8 @@ const vuetify = createVuetify(
             global: {
                 // I love the ripple effect
                 ripple: true,
-                density: "comfortable"
+                density: "comfortable",
+                elevation: 0
             }
         },
         theme: {

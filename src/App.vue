@@ -59,10 +59,10 @@
             </template>
           </v-tooltip>
 
-          <v-tooltip text="Donate">
+          <v-tooltip text="Tips">
             <template v-slot:activator="{ props }">
-              <v-list-item v-bind="props" prepend-icon="mdi-heart" title="Donate" value="donate"
-                :to="{ name: 'donate' }"></v-list-item>
+              <v-list-item v-bind="props" prepend-icon="mdi-heart" title="Tips" value="tips"
+                :to="{ name: 'tip-me' }"></v-list-item>
             </template>
           </v-tooltip>
 

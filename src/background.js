@@ -1,6 +1,6 @@
 'use strict'
 
-const { app, protocol, BrowserWindow, ipcMain, dialog, globalShortcut, Menu, MenuItem } = require('electron');
+const { app, protocol, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem } = require('electron');
 const windowStateKeeper = require('electron-window-state');
 const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
 const path = require('path');
@@ -85,6 +85,11 @@ async function createWindow() {
   win.on("blur", () => { win.webContents.send("blur") })
   win.on("focus", () => { win.webContents.send("focus") })
 
+  //
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
 }
 
 // Create menu structure
