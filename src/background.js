@@ -1,14 +1,19 @@
 'use strict'
 
+// Main electron api.
 const { app, protocol, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem } = require('electron');
+
+// Library to keep track of the electron window state between uses.
 const windowStateKeeper = require('electron-window-state');
+// Installs electron dev tools in the Developer Tools window.
 const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
+// Library for working with directory paths.
 const path = require('path');
 const { createProtocol } = require('vue-cli-plugin-electron-builder/lib');
 const { readFile, writeFile } = require('fs');
-const { encrypt, decrypt } = require('./krypto');
+
 const constants = require('@/constants');
-//const cloneDeep = require('clonedeep');
+
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 

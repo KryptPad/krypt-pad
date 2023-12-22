@@ -165,12 +165,12 @@ const menuItems = computed(() => {
         { title: 'Exit', handler: bridge.close }
       ]
     },
-    {
-      title: 'Tools',
-      items: [
-        { title: 'Password Generator...', handler: null },
-      ]
-    }
+    // {
+    //   title: 'Tools',
+    //   items: [
+    //     { title: 'Password Generator...', handler: null },
+    //   ]
+    // }
   ];
 });
 
