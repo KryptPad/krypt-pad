@@ -235,26 +235,7 @@ app.whenReady().then(async () => {
     });
 
   });
-
-  // // Listen to the message to provide the menu structure to the app
-  // ipcMain.on('get-menu', async () => {
-  //   // Provide the menu to the app
-  //   const menuItems = [];
-  //   for (const item of menu.items) {
-  //     const itemCopy = { label: item.label };
-  //     buildSubmenu(itemCopy, item)
-  //     menuItems.push(itemCopy);
-  //   }
-
-  //   win.webContents.send('menu', menuItems);
-  // });
-
-  // function validateSender(frame) {
-  //   // Value the host of the URL using an actual URL parser and an allowlist
-  //   if ((new URL(frame.url)).host === 'electronjs.org') return true;
-  //   return false;
-  // }
-
+  
   createWindow()
 
 })
@@ -273,21 +254,3 @@ if (isDevelopment) {
     })
   }
 }
-
-// function buildSubmenu(itemCopy, item) {
-//   // Add the sub menu items
-//   itemCopy.submenu = [];
-//   console.log(item)
-//   if (item.submenu?.items) {
-//     for (const submenuItem of item.submenu?.items) {
-//       // Create a submenuItemCopy object. This will store the submenu items of the parent File > [item1, item2, item3]
-//       const submenuItemCopy = { label: submenuItem.label, userAccelerator: item.userAccelerator };
-//       itemCopy.submenu.push(submenuItemCopy);
-
-//       // Each item can have a submenu too, so add any submenu items under this submenu item
-//       buildSubmenu(submenuItemCopy, submenuItem);
-
-//     }
-//   }
-
-// }

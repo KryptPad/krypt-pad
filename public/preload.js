@@ -19,19 +19,6 @@ contextBridge.exposeInMainWorld('bridge', {
     toggleMaximizeRestore: () => ipcRenderer.send('toggle-maximize-restore'),
     minimize: () => ipcRenderer.send('minimize'),
     close: () => ipcRenderer.send('close'),
-    // /**
-    //  * Gets the menu created in the main process
-    //  */
-    // getMenu: () => {
-    //     ipcRenderer.send('get-menu');
-    //     // Create a promise that waits for the message coming back
-    //     return new Promise((resolve) => {
-    //         ipcRenderer.once('menu', (e, response) => {
-    //             console.log(e, response);
-    //             resolve(response);
-    //         });
-    //     });
-    // },
     onHandleShortcut: (callback) => { _onHandleShortcut = callback },
     onUnmaximize: (callback) => { _onUnmaximize = callback },
     onMaximize: (callback) => { _onMaximize = callback },
