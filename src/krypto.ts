@@ -11,9 +11,9 @@ const ITERATIONS = 100000;
  * Generates an encryption key from a passphrase and a salt.
  * @param {String} passphrase 
  * @param {Buffer} salt 
- * @returns 
+ * @returns {Buffer} the secret key
  */
-const generateSecretKey = function (passphrase, salt) {
+const generateSecretKey = function (passphrase: crypto.BinaryLike, salt: crypto.BinaryLike): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         // Generate a derived key from a passphrase, salt, # of iterations. DO NOT USE THE SYNC version of this
         // function. It is extremely slow.
@@ -37,7 +37,7 @@ const generateSecretKey = function (passphrase, salt) {
  * @param {*} passphrase 
  * @returns 
  */
-const encryptAsync = async (text, passphrase) => {
+const encryptAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLike): Promise<Buffer> => {
     // Create a random 32 byte salt
     const salt = crypto.randomBytes(SALT_LENGTH);
     // Generate a derived key from a passphrase, salt, # of iterations
@@ -64,7 +64,7 @@ const encryptAsync = async (text, passphrase) => {
  * @param {*} passphrase 
  * @returns 
  */
-const decryptAsync = async (cipherData, passphrase) => {
+const decryptAsync = async (cipherData: Buffer, passphrase: crypto.BinaryLike): Promise<String> => {
     // Get some prepended data like salt and iv
     const salt = Buffer.from(cipherData.subarray(0, SALT_LENGTH));
     // Generate the secret key from the salt and passphrase
@@ -78,7 +78,7 @@ const decryptAsync = async (cipherData, passphrase) => {
     const content = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4, SALT_LENGTH + IV_LENGTH + 4 + contentLength));
     // Get the auth tag at the end
     const authTag = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4 + contentLength));
-    
+
     // Create a decipher object for aes 256, the secret key, and the iv.
     const decipher = crypto.createDecipheriv(ALGORITHM, secretKey, iv);
     // Set the auth tag
@@ -88,7 +88,5 @@ const decryptAsync = async (cipherData, passphrase) => {
     return decrpyted.toString();
 
 }
-
-
 
 export { encryptAsync, decryptAsync }

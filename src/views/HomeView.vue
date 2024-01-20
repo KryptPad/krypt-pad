@@ -83,7 +83,7 @@
   </v-main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { inject, ref } from 'vue';
 import AddCategory from '@/components/AddCategory.vue';
 import CategoryListItem from '@/components/CategoryListItem.vue';

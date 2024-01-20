@@ -9,7 +9,7 @@
     </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import kpAPI from '@/krypt-pad-api';
 import { Category } from '@/krypt-pad-profile';
 import { ref } from 'vue';

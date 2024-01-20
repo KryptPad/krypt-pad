@@ -65,7 +65,7 @@
     </v-main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { Field } from '@/krypt-pad-profile';
 import { ref, inject } from 'vue';
 import { useRouter } from 'vue-router';

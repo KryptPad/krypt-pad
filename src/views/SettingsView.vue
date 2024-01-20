@@ -19,7 +19,7 @@
     </v-main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 
 import { watch, ref } from 'vue';
 import { useTheme } from 'vuetify/lib/framework.mjs';

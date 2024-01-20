@@ -30,7 +30,7 @@
     </template>
 </template>
 
-<script setup>
+<script setup lang="ts">
 
 import { ref, toRefs } from 'vue';
 

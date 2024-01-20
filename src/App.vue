@@ -101,14 +101,14 @@
   </v-app>
 </template>
 
-<script setup>
-import TitleBar from './components/TitleBar.vue';
-import PassphrasePrompt from './components/PassphrasePrompt.vue';
-import ConfirmDialog from './components/ConfirmDialog.vue';
+<script setup lang="ts">
+import TitleBar from '@/components/TitleBar.vue';
+import PassphrasePrompt from '@/components/PassphrasePrompt.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { computed, provide, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { bridge } from '@/bridge';
-import * as constants from '@/constants';
+import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants';
 
 // Import the krypt-pad api
 import kpAPI from '@/krypt-pad-api';
@@ -117,18 +117,18 @@ import kpAPI from '@/krypt-pad-api';
 provide("kpAPI", kpAPI);
 
 // Register shortcut handlers
-bridge.onHandleShortcut(async (args) => {
+bridge.onHandleShortcut(async (args: String) => {
   console.log(args)
   switch (args) {
-    case constants.SHORTCUT_NEW:
+    case SHORTCUT_NEW:
       await kpAPI.createNewFileAsync();
       break;
 
-    case constants.SHORTCUT_OPEN:
+    case SHORTCUT_OPEN:
       await kpAPI.openExistingFileAsync();
       break;
 
-    case constants.SHORTCUT_CLOSE:
+    case SHORTCUT_CLOSE:
       kpAPI.closeFile();
       break;
   }
@@ -189,7 +189,7 @@ kpAPI.onRequirePassphrase((isNew) => {
 });
 
 // Events
-function passphraseDialogClosed(passphrase) {
+function passphraseDialogClosed(passphrase: String) {
   passphraseResolve(passphrase);
 }
 

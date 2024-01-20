@@ -1,3 +1,4 @@
+import './init';
 import 'vuetify/styles';
 import '@mdi/font/css/materialdesignicons.min.css'; // MDI font icons
 import { createApp } from 'vue';

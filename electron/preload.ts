@@ -1,3 +1,5 @@
+window.global ||= window;
+
 const { contextBridge, ipcRenderer } = require('electron')
 
 // Shortcut handlers

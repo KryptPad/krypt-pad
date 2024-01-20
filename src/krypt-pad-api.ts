@@ -2,6 +2,17 @@ import { reactive, watch } from 'vue';
 import { bridge } from '@/bridge';
 import { Item, Profile } from './krypt-pad-profile';
 import { decryptAsync, encryptAsync } from '@/krypto';
+import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
+
+class KryptPadAPI {
+    fileOpened: Boolean = false;
+    fileName: String | null = null;
+    profile: Profile | null = null;
+    passphrase: String | null = null;
+    router: Router | null = null;
+    route: RouteLocationNormalizedLoaded | null = null;
+    confirmDialog = null;
+}
 
 const kpAPI = reactive({
     fileOpened: false,
@@ -17,9 +28,9 @@ const kpAPI = reactive({
     /**
      * Redirects to the Start page when there is no profile
      */
-    redirectToStartWhenNoProfile(){
-        
-        if (!kpAPI.profile){
+    redirectToStartWhenNoProfile() {
+
+        if (!kpAPI.profile) {
             console.log('Redirecting to start page')
             // Go to start page
             kpAPI.router?.push({ name: "start" });
@@ -167,7 +178,7 @@ const kpAPI = reactive({
                 kpAPI.profile?.categories.splice(index, 1);
                 // Set all item category ids with matching category id to null
                 const matchingItems = kpAPI.profile?.items.filter((i) => i.categoryId === category.id);
-                for (const item of matchingItems ){
+                for (const item of matchingItems) {
                     item.categoryId = null;
                 }
             }
@@ -180,21 +191,21 @@ const kpAPI = reactive({
      * @param {String} categoryId 
      * @param {String} title
      */
-    async addItemAsync(categoryId, title){
+    async addItemAsync(categoryId, title) {
         const item = new Item(null, categoryId, title);
         // Add the item to the global items list
         kpAPI.profile.items.push(item);
-        
+
         return item;
     }
 });
 
-function watchProfile(profile){
+function watchProfile(profile: Profile) {
     watch(profile, async () => {
         // Commit the profile
         console.log("watcher fired")
         await kpAPI.commitProfileAsync();
-    }, {deep: true});
+    }, { deep: true });
 }
 
 

@@ -38,7 +38,7 @@
     </v-list-item>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import kpAPI from '@/krypt-pad-api';
 import { ref } from 'vue';
 

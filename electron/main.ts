@@ -1,18 +1,33 @@
-'use strict'
-
 // Main electron api.
-const { app, protocol, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem } = require('electron');
-
+import { app, protocol, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem } from 'electron'
+// Library for working with directory paths.
+import path from 'node:path'
 // Library to keep track of the electron window state between uses.
 const windowStateKeeper = require('electron-window-state');
-// Installs electron dev tools in the Developer Tools window.
-const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
-// Library for working with directory paths.
-const path = require('path');
-const { createProtocol } = require('vue-cli-plugin-electron-builder/lib');
 const { readFile, writeFile } = require('fs');
+import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts';
+// Installs electron dev tools in the Developer Tools window.
+//const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
 
-const constants = require('@/constants');
+//const { createProtocol } = require('vue-cli-plugin-electron-builder/lib');
+
+
+// The built directory structure
+//
+// ├─┬─┬ dist
+// │ │ └── index.html
+// │ │
+// │ ├─┬ dist-electron
+// │ │ ├── main.js
+// │ │ └── preload.js
+// │
+process.env.DIST = path.join(__dirname, '../dist')
+process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
+
+
+let win: BrowserWindow | null
+// 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
+const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -28,7 +43,6 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } }
 ])
 
-let win = null;
 const menu = new Menu();
 
 /**
@@ -41,27 +55,22 @@ async function createWindow() {
     defaultHeight: 600
   });
 
-  console.log(path.join(__static, "safe.ico"))
-
   // Create the browser window.
   win = new BrowserWindow({
     x: mainWindowState.x,
     y: mainWindowState.y,
     width: mainWindowState.width,
     height: mainWindowState.height,
-    isMaximized: mainWindowState.isMaximized,
+    //isMaximized: mainWindowState.isMaximized,
     titleBarStyle: "hidden",
     frame: false,
-    icon: path.join(__static, "safe.ico"),
+    icon: path.join(process.env.VITE_PUBLIC, "safe.ico"),
     webPreferences: {
-
-      // Use pluginOptions.nodeIntegration, leave this alone
-      // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
-      nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
-      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION,
-      preload: path.join(__static, 'preload.js')
+      preload: path.join(__dirname, 'preload.js')
     }
   })
+
+  win.webContents.openDevTools()
 
   // Register listeners on the window, so we can update the state
   // automatically (the listeners will be removed when the window is closed)
@@ -72,23 +81,18 @@ async function createWindow() {
     win.webContents.send("maximize")
   }
 
-  // Open the dev tools in dev mode and load the main html file
-  if (process.env.WEBPACK_DEV_SERVER_URL) {
-    // Load the url of the dev server if in development mode
-    await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
-    if (!process.env.IS_TEST) win.webContents.openDevTools()
+  if (VITE_DEV_SERVER_URL) {
+    win.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    createProtocol('app')
-    // Load the index.html when not in development
-    win.loadURL('app://./index.html')
-
+    // win.loadFile('dist/index.html')
+    win.loadFile(path.join(process.env.DIST, 'index.html'))
   }
 
   // Register listeners to window events. These will send a request to the bridge process through IPC.
-  win.on("unmaximize", () => { win.webContents.send("unmaximize") })
-  win.on("maximize", () => { win.webContents.send("maximize") })
-  win.on("blur", () => { win.webContents.send("blur") })
-  win.on("focus", () => { win.webContents.send("focus") })
+  win.on("unmaximize", () => { win?.webContents.send("unmaximize") })
+  win.on("maximize", () => { win?.webContents.send("maximize") })
+  win.on("blur", () => { win?.webContents.send("blur") })
+  win.on("focus", () => { win?.webContents.send("focus") })
 
   //
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -103,20 +107,20 @@ menu.append(new MenuItem({
   submenu: [{
     role: '',
     label: 'New File',
-    accelerator: constants.SHORTCUT_NEW,
-    click: () => { win.webContents.send('handle-shortcut', constants.SHORTCUT_NEW); }
+    accelerator: SHORTCUT_NEW,
+    click: () => { win?.webContents.send('handle-shortcut', SHORTCUT_NEW); }
   },
   {
     role: '',
     label: 'Open File',
-    accelerator: constants.SHORTCUT_OPEN,
-    click: () => { win.webContents.send('handle-shortcut', constants.SHORTCUT_OPEN); }
+    accelerator: SHORTCUT_OPEN,
+    click: () => { win?.webContents.send('handle-shortcut', SHORTCUT_OPEN); }
   },
   {
     role: '',
     label: 'Close File',
-    accelerator: constants.SHORTCUT_CLOSE,
-    click: () => { win.webContents.send('handle-shortcut', constants.SHORTCUT_CLOSE); }
+    accelerator: SHORTCUT_CLOSE,
+    click: () => { win?.webContents.send('handle-shortcut', SHORTCUT_CLOSE); }
   }]
 }));
 
@@ -141,14 +145,14 @@ app.on('activate', () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  if (isDevelopment && !process.env.IS_TEST) {
-    // Install Vue Devtools
-    try {
-      await installExtension(VUEJS3_DEVTOOLS)
-    } catch (e) {
-      console.error('Vue Devtools failed to install:', e.toString())
-    }
-  }
+  // if (isDevelopment && !process.env.IS_TEST) {
+  //   // Install Vue Devtools
+  //   try {
+  //     await installExtension(VUEJS3_DEVTOOLS)
+  //   } catch (e) {
+  //     console.error('Vue Devtools failed to install:', e.toString())
+  //   }
+  // }
 
   // Register global shortcuts
 
@@ -162,7 +166,7 @@ app.whenReady().then(async () => {
     const win = BrowserWindow.fromWebContents(webContents)
 
     // Minimize or restore the window
-    win.isMaximized() ? win.restore() : win.maximize()
+    win?.isMaximized() ? win?.restore() : win?.maximize()
 
   });
 
@@ -173,7 +177,7 @@ app.whenReady().then(async () => {
     const win = BrowserWindow.fromWebContents(webContents)
 
     // Minimize or restore the window
-    win.minimize()
+    win?.minimize()
 
   });
 
@@ -184,7 +188,7 @@ app.whenReady().then(async () => {
     const win = BrowserWindow.fromWebContents(webContents)
 
     // Minimize or restore the window
-    win.close()
+    win?.close()
 
   });
 
@@ -197,7 +201,7 @@ app.whenReady().then(async () => {
     };
 
     const response = await dialog.showOpenDialog(win, options);
-    win.webContents.send("file-selected", response);
+    win?.webContents.send("file-selected", response);
 
   });
 
@@ -235,7 +239,7 @@ app.whenReady().then(async () => {
     });
 
   });
-  
+
   createWindow()
 
 })
