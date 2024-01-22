@@ -89,11 +89,12 @@ import AddCategory from '@/components/AddCategory.vue';
 import CategoryListItem from '@/components/CategoryListItem.vue';
 import { useRouter } from 'vue-router';
 import { computed } from 'vue';
+import KryptPadAPI from '@/krypt-pad-api';
 
 const router = useRouter();
 
 // Inject Krypt Pad's core functionality
-const kpAPI = inject("kpAPI");
+const kpAPI = inject<KryptPadAPI>("kpAPI")!;
 
 // Make sure we have a profile loaded or else redirect to the Start page
 kpAPI.redirectToStartWhenNoProfile();
@@ -105,7 +106,7 @@ const searchText = ref(null);
 
 // Computed
 const filteredItems = computed(() => {
-  return kpAPI.profile?.items?.filter((item) =>
+  return kpAPI.profile.value.items.filter((item) =>
     // Filter for category and starred
     (!allStarred.value && !selectedCategory.value
       || allStarred.value === item.starred && !selectedCategory.value
@@ -120,7 +121,7 @@ const filteredItems = computed(() => {
  */
 function getCategory(item) {
   // Look up category and return it
-  const category = kpAPI.profile?.categories.find((c) => c.id === item.categoryId);
+  const category = kpAPI.profile.value.categories.find((c) => c.id === item.categoryId);
   return category;
 }
 

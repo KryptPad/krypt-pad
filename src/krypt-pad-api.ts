@@ -1,61 +1,87 @@
-import { reactive, watch } from 'vue';
+import { reactive, watch, ref } from 'vue';
 import { bridge } from '@/bridge';
-import { Item, Profile } from './krypt-pad-profile';
+import { Category, Item, Profile } from './krypt-pad-profile';
 import { decryptAsync, encryptAsync } from '@/krypto';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
 
 class KryptPadAPI {
-    fileOpened: Boolean = false;
-    fileName: String | null = null;
-    profile: Profile | null = null;
-    passphrase: String | null = null;
+    fileOpened = ref(false);
+    fileName = ref<String | null>(null);
+    profile = ref<Profile | null>(null);
+    passphrase = ref<String | null>(null);
     router: Router | null = null;
     route: RouteLocationNormalizedLoaded | null = null;
-    confirmDialog = null;
-}
-
-const kpAPI = reactive({
-    fileOpened: false,
-    fileName: null,
-    profile: null,
-    passphrase: null,
-    router: null,
-    route: null,
-    confirmDialog: null,
+    confirmDialog: any;
     // Callback for requiring passphrase
-    _requirePassphraseCallback: null,
+    private _requirePassphraseCallback: Function | null = null;
+
+    /**
+     *
+     */
+    constructor() {
+
+
+    }
+
+    /**
+     * Registers a callback that will open a prompt for the user to enter his/her passphrase.
+     * @param {Function} callback 
+     */
+    onRequirePassphrase(callback: Function) {
+        this._requirePassphraseCallback = callback;
+    }
 
     /**
      * Redirects to the Start page when there is no profile
      */
     redirectToStartWhenNoProfile() {
 
-        if (!kpAPI.profile) {
+        if (!this.profile.value) {
             console.log('Redirecting to start page')
             // Go to start page
-            kpAPI.router?.push({ name: "start" });
+            this.router?.push({ name: "start" });
         }
-    },
+    }
 
     /**
-     * Registers a callback that will open a prompt for the user to enter his/her passphrase.
-     * @param {Function} callback 
+     * Opens an existing file
      */
-    onRequirePassphrase(callback) {
-        kpAPI._requirePassphraseCallback = callback;
-    },
+    openExistingFileAsync = async () => {
+        // Show the open file dialog
+        const selectedFile = await bridge.showOpenFileDialogAsync();
+        if (selectedFile.canceled) { return; }
 
-    /**
-     * Closes the currently open file
-     */
-    closeFile() {
-        kpAPI.passphrase = null;
-        kpAPI.profile = null;
-        kpAPI.fileOpened = false;
+        // Close open file
+        this.closeFile();
 
-        // Go to start page
-        kpAPI.router?.push({ name: "start" });
-    },
+        // Set new filename
+        this.fileName.value = selectedFile.filePaths[0];
+
+        // Read the file and get the data
+        const encryptedJSONString = await bridge.readFileAsync(this.fileName.value);
+        if (encryptedJSONString) {
+            // Prompt for passphrase to decrypt the file
+            this.passphrase.value = await this._requirePassphraseCallback?.(false);
+            if (!this.passphrase.value) { return; }
+
+            // Decrypt the json string
+            const jsonString = await decryptAsync(encryptedJSONString, Buffer.from(this.passphrase.value, 'binary'));
+
+            // Load the profile
+            const p = Profile.from(jsonString);
+            if (p) {
+                const rp = reactive(p);
+                this.profile.value = rp;
+                this.watchProfile(this.profile.value);
+            }
+
+            // Set fileOpen flag
+            this.fileOpened.value = true;
+
+            this.router?.push({ name: "home" });
+        }
+
+    }
 
     /**
     * Create a new file
@@ -68,26 +94,31 @@ const kpAPI = reactive({
         if (selectedFile.canceled) { return; }
 
         // Close open file
-        kpAPI.closeFile();
+        this.closeFile();
 
         // Set new filename
-        kpAPI.fileName = selectedFile.filePath;
+        this.fileName.value = selectedFile.filePath;
 
         // Prompt for new passphrase
-        kpAPI.passphrase = await kpAPI._requirePassphraseCallback?.(true);
+        this.passphrase = await this._requirePassphraseCallback?.(true);
 
         // Set fileOpen flag
-        kpAPI.fileOpened = true;
+        this.fileOpened.value = true;
         // Create new profile object
-        kpAPI.profile = reactive(new Profile());
-        watchProfile(kpAPI.profile);
+        const p = reactive(new Profile());
+        if (p) {
+            const rp = reactive(p);
+            this.profile.value = rp;
+            watchProfile(this.profile.value);
+        }
 
         // Commit the file once after creation
-        await kpAPI.commitProfileAsync();
+        await this.commitProfileAsync();
 
-        kpAPI.router?.push({ name: "home" });
+        this.router?.push({ name: "home" });
 
-    },
+    }
+
     /**
      * Saves the existing open profile as a new file
      * @returns 
@@ -98,48 +129,27 @@ const kpAPI = reactive({
         if (selectedFile.canceled) { return; }
 
         // Set new filename
-        kpAPI.fileName = selectedFile.filePath;
+        this.fileName = selectedFile.filePath;
 
         // Prompt for new passphrase
-        kpAPI.passphrase = await kpAPI._requirePassphraseCallback?.(true);
+        this.passphrase.value = await this._requirePassphraseCallback?.(true);
 
         // Commit the file once after creation
-        await kpAPI.commitProfileAsync();
+        await this.commitProfileAsync();
 
-    },
+    }
+
     /**
-     * Opens an existing file
+     * Closes the currently open file
      */
-    async openExistingFileAsync() {
-        // Show the open file dialog
-        const selectedFile = await bridge.showOpenFileDialogAsync();
-        if (selectedFile.canceled) { return; }
+    closeFile() {
+        this.passphrase.value = null;
+        this.profile.value = null;
+        this.fileOpened.value = false;
 
-        // Close open file
-        kpAPI.closeFile();
-
-        // Set new filename
-        kpAPI.fileName = selectedFile.filePaths[0];
-
-        // Read the file and get the data
-        const encryptedJSONString = await bridge.readFileAsync(kpAPI.fileName);
-        if (encryptedJSONString) {
-            // Prompt for passphrase to decrypt the file
-            kpAPI.passphrase = await kpAPI._requirePassphraseCallback?.(false);
-            // Decrypt the json string
-            const jsonString = await decryptAsync(encryptedJSONString, kpAPI.passphrase);
-
-            // Load the profile
-            kpAPI.profile = reactive(Profile.from(jsonString));
-            watchProfile(kpAPI.profile);
-
-            // Set fileOpen flag
-            kpAPI.fileOpened = true;
-
-            kpAPI.router?.push({ name: "home" });
-        }
-
-    },
+        // Go to start page
+        this.router?.push({ name: "start" });
+    }
 
     /**
      * Encrypts the profile and commits it to a file
@@ -147,12 +157,12 @@ const kpAPI = reactive({
     async commitProfileAsync() {
         console.log("writing file")
         // Encrypt the profile. But first, make sure we have a filename and a passphrase
-        if (kpAPI.fileName && kpAPI.passphrase) {
+        if (this.fileName.value && this.passphrase.value) {
             try {
                 // Encrypt the data
-                const cipherBuffer = await encryptAsync(JSON.stringify(kpAPI.profile), kpAPI.passphrase);
+                const cipherBuffer = await encryptAsync(JSON.stringify(this.profile.value), Buffer.from(this.passphrase.value, 'binary'));
                 // Write a file containig the encrypted data
-                await bridge.saveFileAsync(kpAPI.fileName, cipherBuffer);
+                await bridge.saveFileAsync(this.fileName, cipherBuffer);
 
             }
             catch (ex) {
@@ -164,49 +174,54 @@ const kpAPI = reactive({
         }
 
 
-    },
+    }
 
     /**
      * Deletes a category from the profile
      * @param {Category} category 
      */
-    async deleteCategory(category) {
-        if (await kpAPI.confirmDialog?.confirm("Are you sure you want to delete this category?")) {
+    async deleteCategory(category: Category) {
+        if (!this.profile.value) { return; }
+
+        if (await this.confirmDialog?.confirm("Are you sure you want to delete this category?")) {
             // Remove category from list
-            const index = kpAPI.profile?.categories.indexOf(category);
+            const index = this.profile.value.categories.indexOf(category);
             if (index > -1) {
-                kpAPI.profile?.categories.splice(index, 1);
+                this.profile.value.categories.splice(index, 1);
                 // Set all item category ids with matching category id to null
-                const matchingItems = kpAPI.profile?.items.filter((i) => i.categoryId === category.id);
+                const matchingItems = this.profile.value.items.filter((i) => i.categoryId === category.id);
                 for (const item of matchingItems) {
                     item.categoryId = null;
                 }
             }
 
         }
-    },
+    }
 
     /**
      * Adds a new item to the profile
      * @param {String} categoryId 
      * @param {String} title
      */
-    async addItemAsync(categoryId, title) {
+    async addItemAsync(categoryId: String, title: String) {
         const item = new Item(null, categoryId, title);
         // Add the item to the global items list
-        kpAPI.profile.items.push(item);
+        this.profile.value?.items.push(item);
 
         return item;
     }
-});
 
-function watchProfile(profile: Profile) {
-    watch(profile, async () => {
-        // Commit the profile
-        console.log("watcher fired")
-        await kpAPI.commitProfileAsync();
-    }, { deep: true });
+    /**
+     * Watches a profile for any changes and then commits the changes automatically.
+     * @param Profile The profile to watch
+     */
+    watchProfile(profile: Profile) {
+        watch(profile, async () => {
+            // Commit the profile
+            console.log("watcher fired")
+            await this.commitProfileAsync();
+        }, { deep: true });
+    }
 }
 
-
-export default kpAPI;
+export default KryptPadAPI;

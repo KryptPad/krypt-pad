@@ -3,55 +3,58 @@
  * A profile is the top most entity. It contains all the categories the user defines.
  */
 class Profile {
+    categories: Array<Category> = [];
+    items: Array<Item> = [];
+
     constructor() {
-        this.categories = [];
-        this.items = [];
+    }
+
+    /**
+     * Creates a profile from a json string
+     * @param {String} json 
+     * @returns 
+     */
+    static from(json): Profile | null {
+        if (!json) { return null; }
+
+        // Parse the json string
+        const profileObject = JSON.parse(json);
+
+        // Create the Profile
+        const profile = new Profile();
+
+        // Create the categories
+        for (const c of profileObject.categories) {
+            const category = new Category(c.id, c.title);
+            // Add category to profile
+            profile.categories.push(category);
+
+        }
+
+        // Create the items
+        for (const i of profileObject.items) {
+            const item = new Item(i.id, i.categoryId, i.title);
+            item.notes = i.notes;
+            item.starred = i.starred;
+            console.log(item)
+
+            // Add fields to the item
+            for (const field of i.fields) {
+                item.fields.push(new Field(field.name, field.value));
+            }
+
+            // Add category to profile
+            profile.items.push(item);
+
+        }
+
+        return profile;
+
     }
 
 }
 
-/**
- * Creates a profile from a json string
- * @param {String} json 
- * @returns 
- */
-Profile.from = function (json) {
-    if (!json) { return; }
 
-    // Parse the json string
-    const profileObject = JSON.parse(json);
-
-    // Create the Profile
-    const profile = new Profile();
-
-    // Create the categories
-    for (const c of profileObject.categories) {
-        const category = new Category(c.id, c.title);
-        // Add category to profile
-        profile.categories.push(category);
-
-    }
-
-    // Create the items
-    for (const i of profileObject.items) {
-        const item = new Item(i.id, i.categoryId, i.title);
-        item.notes = i.notes;
-        item.starred = i.starred;
-        console.log(item)
-        
-        // Add fields to the item
-        for (const field of i.fields) {
-            item.fields.push(new Field(field.name, field.value));
-        }
-
-        // Add category to profile
-        profile.items.push(item);
-
-    }
-
-    return profile;
-
-};
 
 /**
  * Category for organizing items.

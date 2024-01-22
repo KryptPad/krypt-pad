@@ -111,7 +111,9 @@ import { bridge } from '@/bridge';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants';
 
 // Import the krypt-pad api
-import kpAPI from '@/krypt-pad-api';
+import KryptPadAPI from '@/krypt-pad-api';
+
+const kpAPI = new KryptPadAPI();
 
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);
@@ -175,11 +177,11 @@ const menuItems = computed(() => {
 });
 
 const homeRoute = computed(() => {
-  return { name: kpAPI.profile ? 'home' : 'start' };
+  return { name: kpAPI.profile.value ? 'home' : 'start' };
 })
 
 // Create callback handler for passprhase prompt. When passphrase is required, this callback will be fired.
-kpAPI.onRequirePassphrase((isNew) => {
+kpAPI.onRequirePassphrase((isNew: Boolean) => {
   passphraseIsNew.value = isNew;
   passphrasePrompter.value.show();
   return new Promise((resolve) => {
