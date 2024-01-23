@@ -11,10 +11,10 @@ class Profile {
 
     /**
      * Creates a profile from a json string
-     * @param {String} json 
+     * @param {string} json 
      * @returns 
      */
-    static from(json): Profile | null {
+    static from(json: string): Profile | null {
         if (!json) { return null; }
 
         // Parse the json string
@@ -54,18 +54,26 @@ class Profile {
 
 }
 
-
+/**
+ * Interface for category
+ */
+interface IIdTitle {
+    id: string | null
+    title: string;
+}
 
 /**
  * Category for organizing items.
  */
-class Category {
+class Category implements IIdTitle {
+    id: string;
+    title: string;
     /**
      * Creates a new category. If no id is passed, a new one is generated.
      * @param {String} id 
      * @param {String} title 
      */
-    constructor(id, title) {
+    constructor(id: string, title: string) {
         this.title = title;
         if (!id) {
             this.id = crypto.randomUUID();
@@ -80,14 +88,23 @@ class Category {
 /**
  * Wrapper for user defined data to encrypt. Contains fields and notes
  */
-class Item {
+class Item implements IIdTitle {
+    id: string;
+    title: string;
+    notes: string | null;
+    starred: boolean;
+
+    categoryId: string | null;
+
+    fields: Array<Field> = [];
+
     /**
      * Creates a new item. If no id is passed, a new one is generated.
      * @param {String} id 
      * @param {String} categoryId 
      * @param {String} title 
      */
-    constructor(id, categoryId, title) {
+    constructor(id: string | null, categoryId: string | null, title: string) {
         if (!id) {
             this.id = crypto.randomUUID();
         } else {
@@ -98,8 +115,6 @@ class Item {
         this.starred = false;
         // Link to a category
         this.categoryId = categoryId;
-        // Fields
-        this.fields = [];
 
     }
 
@@ -109,15 +124,19 @@ class Item {
  * User defined fields for items
  */
 class Field {
+    name: string;
+    value: string | null;
+
     /**
      * Creates a new item.
      * @param {String} name 
      * @param {String} value 
      */
-    constructor(name, value) {
+    constructor(name: string, value: string | null) {
         this.name = name;
         this.value = value;
     }
 }
 
 export { Profile, Category, Item, Field };
+export type { IIdTitle };

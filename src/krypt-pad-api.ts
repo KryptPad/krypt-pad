@@ -86,7 +86,7 @@ class KryptPadAPI {
     /**
     * Create a new file
     */
-    async createNewFileAsync() {
+    createNewFileAsync = async () => {
         // TODO: If there is already a file open, prompt the user if they are sure they want to create a new file
 
         // Open save dialog to allow user to save a new file
@@ -100,7 +100,7 @@ class KryptPadAPI {
         this.fileName.value = selectedFile.filePath;
 
         // Prompt for new passphrase
-        this.passphrase = await this._requirePassphraseCallback?.(true);
+        this.passphrase.value = await this._requirePassphraseCallback?.(true);
 
         // Set fileOpen flag
         this.fileOpened.value = true;
@@ -109,7 +109,7 @@ class KryptPadAPI {
         if (p) {
             const rp = reactive(p);
             this.profile.value = rp;
-            watchProfile(this.profile.value);
+            this.watchProfile(this.profile.value);
         }
 
         // Commit the file once after creation
@@ -123,7 +123,7 @@ class KryptPadAPI {
      * Saves the existing open profile as a new file
      * @returns 
      */
-    async saveProfileAsAsync() {
+    saveProfileAsAsync = async () => {
         // Open save dialog to allow user to save a new file
         const selectedFile = await bridge.showSaveFileDialogAsync();
         if (selectedFile.canceled) { return; }
@@ -142,7 +142,7 @@ class KryptPadAPI {
     /**
      * Closes the currently open file
      */
-    closeFile() {
+    closeFile = () => {
         this.passphrase.value = null;
         this.profile.value = null;
         this.fileOpened.value = false;
@@ -154,7 +154,7 @@ class KryptPadAPI {
     /**
      * Encrypts the profile and commits it to a file
      */
-    async commitProfileAsync() {
+    commitProfileAsync = async() => {
         console.log("writing file")
         // Encrypt the profile. But first, make sure we have a filename and a passphrase
         if (this.fileName.value && this.passphrase.value) {
@@ -162,7 +162,7 @@ class KryptPadAPI {
                 // Encrypt the data
                 const cipherBuffer = await encryptAsync(JSON.stringify(this.profile.value), Buffer.from(this.passphrase.value, 'binary'));
                 // Write a file containig the encrypted data
-                await bridge.saveFileAsync(this.fileName, cipherBuffer);
+                await bridge.saveFileAsync(this.fileName.value, cipherBuffer);
 
             }
             catch (ex) {
@@ -180,7 +180,7 @@ class KryptPadAPI {
      * Deletes a category from the profile
      * @param {Category} category 
      */
-    async deleteCategory(category: Category) {
+    deleteCategory = async (category: Category) => {
         if (!this.profile.value) { return; }
 
         if (await this.confirmDialog?.confirm("Are you sure you want to delete this category?")) {
@@ -200,10 +200,10 @@ class KryptPadAPI {
 
     /**
      * Adds a new item to the profile
-     * @param {String} categoryId 
-     * @param {String} title
+     * @param {string} categoryId 
+     * @param {string} title
      */
-    async addItemAsync(categoryId: String, title: String) {
+    addItemAsync = async (categoryId: string, title: string) => {
         const item = new Item(null, categoryId, title);
         // Add the item to the global items list
         this.profile.value?.items.push(item);
@@ -215,7 +215,7 @@ class KryptPadAPI {
      * Watches a profile for any changes and then commits the changes automatically.
      * @param Profile The profile to watch
      */
-    watchProfile(profile: Profile) {
+    private watchProfile(profile: Profile) {
         watch(profile, async () => {
             // Commit the profile
             console.log("watcher fired")

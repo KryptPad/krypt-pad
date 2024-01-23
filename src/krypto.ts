@@ -9,8 +9,8 @@ const ITERATIONS = 100000;
 
 /**
  * Generates an encryption key from a passphrase and a salt.
- * @param {String} passphrase 
- * @param {Buffer} salt 
+ * @param {crypto.BinaryLike} passphrase 
+ * @param {crypto.BinaryLike} salt 
  * @returns {Buffer} the secret key
  */
 const generateSecretKey = function (passphrase: crypto.BinaryLike, salt: crypto.BinaryLike): Promise<Buffer> {
@@ -33,8 +33,8 @@ const generateSecretKey = function (passphrase: crypto.BinaryLike, salt: crypto.
 
 /**
  * Encrypts data with a key generated from a passphrase
- * @param {*} text 
- * @param {*} passphrase 
+ * @param {crypto.BinaryLike} text 
+ * @param {crypto.BinaryLike} passphrase 
  * @returns 
  */
 const encryptAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLike): Promise<Buffer> => {
@@ -64,7 +64,7 @@ const encryptAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLi
  * @param {*} passphrase 
  * @returns 
  */
-const decryptAsync = async (cipherData: Buffer, passphrase: crypto.BinaryLike): Promise<String> => {
+const decryptAsync = async (cipherData: Buffer, passphrase: crypto.BinaryLike): Promise<string> => {
     // Get some prepended data like salt and iv
     const salt = Buffer.from(cipherData.subarray(0, SALT_LENGTH));
     // Generate the secret key from the salt and passphrase

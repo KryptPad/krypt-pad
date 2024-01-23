@@ -32,9 +32,13 @@
 
 <script setup lang="ts">
 
+import { Field } from '@/krypt-pad-profile';
 import { ref, toRefs } from 'vue';
 
-const props = defineProps({ modelValue: Object });
+const props = defineProps({
+    modelValue: { type: Field, required: true }
+});
+
 const emit = defineEmits(['delete', 'update:modelValue']);
 
 const isEditing = ref(false);
@@ -42,19 +46,23 @@ const { modelValue: internalField } = toRefs(props);
 
 // Event handler
 function saveField() {
-    emit('update:modelValue', internalField);
+    emit('update:modelValue', internalField.value);
 
     isEditing.value = false;
 }
 
-function onValueChange(ev) {
-    internalField.value = ev.target.value;
+function onValueChange(ev: Event) {
+    // Get element value
+    const element = ev.target as HTMLInputElement;
+    // Update field value
+    internalField.value.value = element.value;
     // Update v-model
-    emit('update:modelValue', internalField);
+    emit('update:modelValue', internalField.value);
+
 }
 
 function deleteField() {
-    emit('delete', internalField);
+    emit('delete', internalField.value);
 
 }
 

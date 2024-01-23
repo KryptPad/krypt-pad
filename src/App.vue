@@ -86,7 +86,7 @@
 
       <!-- Display router view components here -->
       <router-view v-slot="{ Component }">
-        <keep-alive :include="['HomeView']" :key="kpAPI.fileName">
+        <keep-alive :include="['HomeView']" :key="kpAPI.fileName.value">
           <component :is="Component" />
         </keep-alive>
       </router-view>
@@ -113,7 +113,18 @@ import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants';
 // Import the krypt-pad api
 import KryptPadAPI from '@/krypt-pad-api';
 
+// Data
+const passphrasePrompter = ref<InstanceType<typeof PassphrasePrompt>>();
+const passphraseIsNew = ref(false);
+const confirmDialog1 = ref(null);
+
+// Main API
 const kpAPI = new KryptPadAPI();
+
+// Initialize the API
+kpAPI.router = useRouter();
+kpAPI.route = useRoute();
+kpAPI.confirmDialog = confirmDialog1;
 
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);
@@ -137,19 +148,6 @@ bridge.onHandleShortcut(async (args: String) => {
 
 });
 
-// Data
-const passphrasePrompter = ref(null);
-const passphraseIsNew = ref(false);
-const confirmDialog1 = ref(null);
-
-// Initialize the API
-kpAPI.router = useRouter();
-kpAPI.route = useRoute();
-kpAPI.confirmDialog = confirmDialog1;
-
-let passphraseResolve;
-//let passphraseReject;
-
 // Define menu items
 const menuItems = computed(() => {
   return [
@@ -160,9 +158,9 @@ const menuItems = computed(() => {
         // { title: 'Import KDF File' },
         { title: 'Open File...', handler: kpAPI.openExistingFileAsync, accelerator: 'Ctrl + O' },
         { divider: true },
-        { title: 'Close File', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened, accelerator: 'Ctrl + F4' },
+        { title: 'Close File', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened.value, accelerator: 'Ctrl + F4' },
         { divider: true },
-        { title: 'Save File As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened },
+        { title: 'Save File As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened.value },
         { divider: true },
         { title: 'Exit', handler: bridge.close }
       ]
@@ -180,30 +178,27 @@ const homeRoute = computed(() => {
   return { name: kpAPI.profile.value ? 'home' : 'start' };
 })
 
+let passphraseResolver: Function;
+
 // Create callback handler for passprhase prompt. When passphrase is required, this callback will be fired.
-kpAPI.onRequirePassphrase((isNew: Boolean) => {
+kpAPI.onRequirePassphrase((isNew: boolean) => {
+  if (!passphrasePrompter.value){
+    return;
+  }
+
   passphraseIsNew.value = isNew;
   passphrasePrompter.value.show();
+
   return new Promise((resolve) => {
-    passphraseResolve = resolve;
-    //passphraseReject = reject;
+    passphraseResolver = resolve;
+    
   });
 });
 
 // Events
 function passphraseDialogClosed(passphrase: String) {
-  passphraseResolve(passphrase);
+  passphraseResolver(passphrase);
 }
-
-// // Methods
-// async function getMenu() {
-//   // Get the menu from the main process
-//   const menu = await bridge.getMenu();
-//   console.log(menu)
-
-// }
-
-// getMenu();
 
 </script>
 

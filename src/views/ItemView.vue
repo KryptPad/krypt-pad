@@ -18,7 +18,7 @@
 
             <div class="flex-fill d-flex mb-3">
                 <v-textarea :model-value="item.notes" @change="item.notes = $event.target.value" label="notes"
-                    class="d-flex flex-column fill-height mr-3" hide-details="true"></v-textarea>
+                    class="d-flex flex-column fill-height mr-3" :hide-details="true"></v-textarea>
 
                 <div class="">
                     Add any additioal data fields you need.
@@ -36,7 +36,7 @@
 
                     </v-card>
 
-                    <v-card v-for="(field, index) in item.fields" :key="index" class="mt-2">
+                    <v-card v-for="(_, index) in item.fields" :key="index" class="mt-2">
                         <v-card-text>
                             <name-value v-model="item.fields[index]" @delete="onDeleteField"></name-value>
                         </v-card-text>
@@ -66,33 +66,46 @@
 </template>
 
 <script setup lang="ts">
-import { Field } from '@/krypt-pad-profile';
-import { ref, inject } from 'vue';
+import { Item, Field, IIdTitle } from '@/krypt-pad-profile';
+import { ref, inject, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import NameValue from '@/components/NameValue.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
-import { computed } from 'vue';
+import KryptPadAPI from '@/krypt-pad-api';
 
 const router = useRouter();
 
-const kpAPI = inject("kpAPI");
+const kpAPI = inject<KryptPadAPI>("kpAPI")!;
 kpAPI.redirectToStartWhenNoProfile();
 
-const confirmDialog1 = ref(null);
+const confirmDialog1 = ref<InstanceType<typeof ConfirmDialog>>();
 const props = defineProps({ id: String });
 const isEditing = ref(false);
-const fieldName = ref(null);
-const item = kpAPI.profile.items.find((item) => item.id === props.id);
+const fieldName = ref<string | null>(null);
+
+// Find the item by its id
+const item = kpAPI.profile.value?.items.find((item: Item) => item.id === props.id);
 
 const categories = computed(() => {
-    return [{ title: 'None', id: null }, ...kpAPI.profile.categories];
+    // Create a default selection from the interface
+    const defaultSelection: IIdTitle = {
+        id: null,
+        title: "None"
+    }
+
+    // If the profile is null, just return the default selection.
+    if (!kpAPI.profile.value) { return [defaultSelection]; }
+
+    return [defaultSelection, ...kpAPI.profile.value.categories];
 })
 
 // Event handlers
 function addField() {
+    if (!fieldName.value) { return; }
+
     isEditing.value = false;
     // Add the field to the profile
-    item.fields.push(new Field(fieldName.value));
+    item?.fields.push(new Field(fieldName.value, null));
     // Clear field name
     fieldName.value = null;
 }
@@ -102,22 +115,26 @@ function backHome() {
 }
 
 async function deleteItem() {
-    if (!await confirmDialog1.value.confirm('Are you sure you want to delete this item?')) {
+    if (!kpAPI.profile.value || !item) { return; }
+
+    if (!await confirmDialog1.value?.confirm('Are you sure you want to delete this item?')) {
         return;
 
     }
 
     // Remove item from list
-    const index = kpAPI.profile?.items.indexOf(item);
+    const index = kpAPI.profile.value.items.indexOf(item);
     if (index > -1) {
-        kpAPI.profile?.items.splice(index, 1);
+        kpAPI.profile.value.items.splice(index, 1);
         // Go back to the home page
         router.back();
     }
 }
 
-async function onDeleteField(field) {
-    if (!await confirmDialog1.value.confirm('Are you sure you want to delete this field?')) {
+async function onDeleteField(field: Field) {
+    if (!item) { return; }
+
+    if (!await confirmDialog1.value?.confirm('Are you sure you want to delete this field?')) {
         return;
 
     }
