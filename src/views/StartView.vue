@@ -19,9 +19,10 @@
 </template>
 
 <script setup lang="ts">
+import KryptPadAPI from '@/krypt-pad-api';
 import { inject } from 'vue';
 
 // Inject Krypt Pad's core functionality
-const kpAPI = inject("kpAPI");
+const kpAPI = inject<KryptPadAPI>("kpAPI")!;
 
 </script>

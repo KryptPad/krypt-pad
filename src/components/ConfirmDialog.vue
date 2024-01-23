@@ -30,14 +30,14 @@
 import { ref } from 'vue';
 
 const showDialog = ref(false);
-const confirmMessage = ref(null);
-let confirmResolve = null;
+const confirmMessage = ref<string | null>(null);
+let confirmResolve: Function | null = null;
 
 /**
  * Shows the user a confirm message
  * @param {String} message 
  */
-function confirm(message) {
+function confirm(message: string) {
     showDialog.value = true;
     return new Promise((resolve) => {
         confirmResolve = resolve;

@@ -97,7 +97,7 @@
     <passphrase-prompt ref="passphrasePrompter" :passphrase-is-new="passphraseIsNew"
       @closed="passphraseDialogClosed"></passphrase-prompt>
 
-    <confirm-dialog ref="confirmDialog1"></confirm-dialog>
+    <confirm-dialog ref="confirmDialogPrompt"></confirm-dialog>
   </v-app>
 </template>
 
@@ -116,7 +116,7 @@ import KryptPadAPI from '@/krypt-pad-api';
 // Data
 const passphrasePrompter = ref<InstanceType<typeof PassphrasePrompt>>();
 const passphraseIsNew = ref(false);
-const confirmDialog1 = ref(null);
+const confirmDialogPrompt = ref<InstanceType<typeof ConfirmDialog> | null>(null);
 
 // Main API
 const kpAPI = new KryptPadAPI();
@@ -124,7 +124,7 @@ const kpAPI = new KryptPadAPI();
 // Initialize the API
 kpAPI.router = useRouter();
 kpAPI.route = useRoute();
-kpAPI.confirmDialog = confirmDialog1;
+kpAPI.confirmDialog = confirmDialogPrompt;
 
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);

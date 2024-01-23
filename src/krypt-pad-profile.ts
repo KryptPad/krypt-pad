@@ -73,7 +73,7 @@ class Category implements IIdTitle {
      * @param {String} id 
      * @param {String} title 
      */
-    constructor(id: string, title: string) {
+    constructor(id: string | null, title: string) {
         this.title = title;
         if (!id) {
             this.id = crypto.randomUUID();
@@ -104,13 +104,13 @@ class Item implements IIdTitle {
      * @param {String} categoryId 
      * @param {String} title 
      */
-    constructor(id: string | null, categoryId: string | null, title: string) {
+    constructor(id: string | null, categoryId: string | null, title: string | null) {
         if (!id) {
             this.id = crypto.randomUUID();
         } else {
             this.id = id;
         }
-        this.title = title || 'Untitled';
+        this.title = title ?? 'Untitled';
         this.notes = null;
         this.starred = false;
         // Link to a category

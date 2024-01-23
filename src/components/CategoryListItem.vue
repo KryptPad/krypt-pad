@@ -11,7 +11,7 @@
                 </template>
 
                 <v-list>
-                    <v-list-item prepend-icon="mdi-rename" value="rename" @click="editName">
+                    <v-list-item prepend-icon="mdi-rename" value="rename" @click="enterEditMode">
                         <v-list-item-title>Rename</v-list-item-title>
                     </v-list-item>
 
@@ -25,50 +25,63 @@
     </v-list-item>
 
     <!-- Edit category name -->
-    <v-list-item v-else @keypress.enter="renameCategory(category)" @keydown.esc="close()">
+    <v-list-item v-else @keypress.enter="renameCategory" @keydown.esc="close()">
 
         <div class="mb-1" @click.stop>
             <v-text-field v-model="title" type="text" label="category name" :rules="rules" hide-details="auto" class="mb-3"
                 autofocus >
             </v-text-field>
 
-            <v-btn color="primary" icon="mdi-check" class="mr-3" @click="renameCategory(category)"></v-btn>
+            <v-btn color="primary" icon="mdi-check" class="mr-3" @click="renameCategory"></v-btn>
             <v-btn icon="mdi-close" @click="close()"></v-btn>
         </div>
     </v-list-item>
 </template>
 
 <script setup lang="ts">
-import kpAPI from '@/krypt-pad-api';
-import { ref } from 'vue';
+import KryptPadAPI from '@/krypt-pad-api';
+import { Category } from '@/krypt-pad-profile';
+import { inject, ref } from 'vue';
 
 const props = defineProps({
     // A reference to the category
-    category: Object,
-    active: Boolean
+    category: {type: Category, required: true},
+    active: {type: Boolean}
 })
+
+// Inject Krypt Pad's core functionality
+const kpAPI = inject<KryptPadAPI>("kpAPI")!;
 
 const isEditing = ref(false);
 const title = ref();
 const rules = [
-    value => !!value || 'Required.'
+    (value: string | null) => !!value || 'Required.'
 ];
 
 const emit = defineEmits(['click']);
 
-function editName() {
+/**
+ * Puts the component into edit mode
+ */
+function enterEditMode() {
     // Set the title field to the category's title so we can rename it.
     title.value = props.category?.title;
     isEditing.value = true;
 }
 
-function renameCategory(category) {
+/**
+ * Renames the category
+ */
+function renameCategory() {
     if (!title.value){ return; }
     // When change is fired, update the category title to trigger updating the profile.
-    category.title = title;
+    props.category.title = title.value;
     close();
 }
 
+/**
+ * Closes out of editing mode
+ */
 function close(){
     isEditing.value = false;
 }

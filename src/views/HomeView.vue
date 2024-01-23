@@ -31,7 +31,7 @@
         </v-list-item>
 
         <!-- User defined categories -->
-        <category-list-item v-for="(category, index) in kpAPI.profile?.categories" :category="category" :key="index"
+        <category-list-item v-for="(category, index) in kpAPI.profile.value?.categories" :category="category" :key="index"
           :active="selectedCategory === category" @click="categorySelected(category)">
         </category-list-item>
 
@@ -44,7 +44,7 @@
     <!-- Search and other things -->
     <v-icon icon="mdi-magnify" class="ml-3"></v-icon>
     <v-text-field v-model="searchText" type="type" class="mx-3" label="search" :clearable="true"
-      hide-details="true"></v-text-field>
+      :hide-details="true"></v-text-field>
 
     <template v-slot:append>
 
@@ -74,7 +74,7 @@
         </v-card-title>
 
         <v-card-actions>
-          <v-btn icon="mdi-star" :color="item.starred ? 'yellow' : null"
+          <v-btn icon="mdi-star" :color="item.starred ? 'yellow' : undefined"
             @click.stop="item.starred = !item.starred"></v-btn>
         </v-card-actions>
       </v-card>
@@ -90,6 +90,8 @@ import CategoryListItem from '@/components/CategoryListItem.vue';
 import { useRouter } from 'vue-router';
 import { computed } from 'vue';
 import KryptPadAPI from '@/krypt-pad-api';
+import { Category, Item } from '@/krypt-pad-profile';
+
 
 const router = useRouter();
 
@@ -100,13 +102,13 @@ const kpAPI = inject<KryptPadAPI>("kpAPI")!;
 kpAPI.redirectToStartWhenNoProfile();
 
 const isAdding = ref(false);
-const selectedCategory = ref(null);
+const selectedCategory = ref<Category | null>(null);
 const allStarred = ref(false);
-const searchText = ref(null);
+const searchText = ref<string | null>(null);
 
 // Computed
 const filteredItems = computed(() => {
-  return kpAPI.profile.value.items.filter((item) =>
+  return kpAPI.profile.value?.items.filter((item) =>
     // Filter for category and starred
     (!allStarred.value && !selectedCategory.value
       || allStarred.value === item.starred && !selectedCategory.value
@@ -119,25 +121,28 @@ const filteredItems = computed(() => {
  * Gets the category for an item
  * @param {Item} item 
  */
-function getCategory(item) {
+function getCategory(item: Item) {
   // Look up category and return it
-  const category = kpAPI.profile.value.categories.find((c) => c.id === item.categoryId);
+  const category = kpAPI.profile.value?.categories.find((c) => c.id === item.categoryId);
   return category;
 }
 
 // Event handlers
-function categorySelected(category, starred) {
+function categorySelected(category: Category | null, starred?: boolean) {
   selectedCategory.value = category;
-  allStarred.value = starred;
+  allStarred.value = starred ?? false;
 }
 
-async function addItemAsync() {
+function addItemAsync() {
   // Create new item within the selected category
-  const item = await kpAPI.addItemAsync(selectedCategory.value?.id, null);
+  const item = new Item(null, selectedCategory.value?.id ?? null, null);
+  // Add the item to the global items list
+  kpAPI.profile.value?.items.push(item);
+  // Go to item page
   router.push({ name: 'item', params: { id: item.id } });
 }
 
-function itemSelected(item) {
+function itemSelected(item: Item) {
   router.push({ name: 'item', params: { id: item.id } });
 }
 

@@ -1,8 +1,9 @@
-import { reactive, watch, ref } from 'vue';
+import { reactive, watch, ref, Ref } from 'vue';
 import { bridge } from '@/bridge';
 import { Category, Item, Profile } from './krypt-pad-profile';
 import { decryptAsync, encryptAsync } from '@/krypto';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
+import ConfirmDialogVue from './components/ConfirmDialog.vue';
 
 class KryptPadAPI {
     fileOpened = ref(false);
@@ -11,7 +12,8 @@ class KryptPadAPI {
     passphrase = ref<String | null>(null);
     router: Router | null = null;
     route: RouteLocationNormalizedLoaded | null = null;
-    confirmDialog: any;
+    confirmDialog: Ref<InstanceType<typeof ConfirmDialogVue> | null> | null = null;
+
     // Callback for requiring passphrase
     private _requirePassphraseCallback: Function | null = null;
 
@@ -183,7 +185,7 @@ class KryptPadAPI {
     deleteCategory = async (category: Category) => {
         if (!this.profile.value) { return; }
 
-        if (await this.confirmDialog?.confirm("Are you sure you want to delete this category?")) {
+        if (await this.confirmDialog?.value?.confirm("Are you sure you want to delete this category?")) {
             // Remove category from list
             const index = this.profile.value.categories.indexOf(category);
             if (index > -1) {
@@ -196,19 +198,6 @@ class KryptPadAPI {
             }
 
         }
-    }
-
-    /**
-     * Adds a new item to the profile
-     * @param {string} categoryId 
-     * @param {string} title
-     */
-    addItemAsync = async (categoryId: string, title: string) => {
-        const item = new Item(null, categoryId, title);
-        // Add the item to the global items list
-        this.profile.value?.items.push(item);
-
-        return item;
     }
 
     /**

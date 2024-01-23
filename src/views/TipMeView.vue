@@ -12,7 +12,7 @@
                     </v-card-title>
 
                     <img :src="qrBTC" style="height: 10rem;">
-                    
+
                 </v-card>
 
                 <!-- OSMO -->
@@ -22,7 +22,7 @@
                     </v-card-title>
 
                     <img :src="qrOSMO" style="height: 10rem;">
-                    
+
                 </v-card>
             </div>
 
@@ -33,17 +33,17 @@
 
 <script setup lang="ts">
 
-import { ref } from 'vue';
+import { Ref, ref } from 'vue';
 import QRCode from 'qrcode';
 
-const qrBTC = ref(null);
-const qrOSMO = ref(null);
+const qrBTC = ref<string | undefined>();
+const qrOSMO = ref<string | undefined>();
 
 /**
  * Generates a QR code from text
  * @param {String} text 
  */
-const generateQR = async (text, refVar) => {
+const generateQR = async (text: string, refVar: Ref<string | undefined>) => {
     try {
         refVar.value = await QRCode.toDataURL(text);
 

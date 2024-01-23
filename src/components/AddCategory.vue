@@ -10,13 +10,17 @@
 </template>
 
 <script setup lang="ts">
-import kpAPI from '@/krypt-pad-api';
-import { Category } from '@/krypt-pad-profile';
-import { ref } from 'vue';
 
-const title = ref();
+import KryptPadAPI from '@/krypt-pad-api';
+import { Category } from '@/krypt-pad-profile';
+import { inject, ref } from 'vue';
+
+// Inject Krypt Pad's core functionality
+const kpAPI = inject<KryptPadAPI>("kpAPI")!;
+
+const title = ref<string | null>(null);
 const rules = [
-    value => !!value || 'Required.'
+    (value: string) => !!value || 'Required.'
 ];
 
 const emit = defineEmits(['closed']);
@@ -25,7 +29,7 @@ const emit = defineEmits(['closed']);
 function addCategory() {
     if (!title.value){ return; }
     // Add the category to the profile
-    kpAPI.profile.categories.push(new Category(null, title));
+    kpAPI.profile.value?.categories.push(new Category(null, title.value));
 
     close();
 }
