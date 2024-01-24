@@ -1,15 +1,15 @@
 import { reactive, watch, ref, Ref } from 'vue';
 import { bridge } from '@/bridge';
-import { Category, Item, Profile } from './krypt-pad-profile';
+import { Category, Profile } from './krypt-pad-profile';
 import { decryptAsync, encryptAsync } from '@/krypto';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
 import ConfirmDialogVue from './components/ConfirmDialog.vue';
 
 class KryptPadAPI {
     fileOpened = ref(false);
-    fileName = ref<String | null>(null);
+    fileName = ref<string | undefined>();
     profile = ref<Profile | null>(null);
-    passphrase = ref<String | null>(null);
+    passphrase = ref<string | null>(null);
     router: Router | null = null;
     route: RouteLocationNormalizedLoaded | null = null;
     confirmDialog: Ref<InstanceType<typeof ConfirmDialogVue> | null> | null = null;
@@ -131,7 +131,7 @@ class KryptPadAPI {
         if (selectedFile.canceled) { return; }
 
         // Set new filename
-        this.fileName = selectedFile.filePath;
+        this.fileName.value = selectedFile.filePath;
 
         // Prompt for new passphrase
         this.passphrase.value = await this._requirePassphraseCallback?.(true);

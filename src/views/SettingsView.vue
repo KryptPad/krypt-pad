@@ -22,7 +22,7 @@
 <script setup lang="ts">
 
 import { watch, ref } from 'vue';
-import { useTheme } from 'vuetify/lib/framework.mjs';
+import { useTheme } from 'vuetify';
 
 const theme = useTheme();
 const lightMode = ref(!theme.global.current.value.dark);

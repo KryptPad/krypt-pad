@@ -113,10 +113,11 @@ import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants';
 // Import the krypt-pad api
 import KryptPadAPI from '@/krypt-pad-api';
 
-// Data
+// Component refs
 const passphrasePrompter = ref<InstanceType<typeof PassphrasePrompt>>();
-const passphraseIsNew = ref(false);
 const confirmDialogPrompt = ref<InstanceType<typeof ConfirmDialog> | null>(null);
+// Data
+const passphraseIsNew = ref(false);
 
 // Main API
 const kpAPI = new KryptPadAPI();
@@ -182,7 +183,7 @@ let passphraseResolver: Function;
 
 // Create callback handler for passprhase prompt. When passphrase is required, this callback will be fired.
 kpAPI.onRequirePassphrase((isNew: boolean) => {
-  if (!passphrasePrompter.value){
+  if (!passphrasePrompter.value) {
     return;
   }
 
@@ -191,7 +192,7 @@ kpAPI.onRequirePassphrase((isNew: boolean) => {
 
   return new Promise((resolve) => {
     passphraseResolver = resolve;
-    
+
   });
 });
 

@@ -1,17 +1,17 @@
-window.global ||= window;
+//window.global ||= window;
 
-const { contextBridge, ipcRenderer } = require('electron')
+import { contextBridge, ipcRenderer } from 'electron';
 
 // Shortcut handlers
-let _onHandleShortcut = null;
+let _onHandleShortcut: Function | null = null;
 // Called when window is restored
-let _onUnmaximize = null
+let _onUnmaximize: Function | null = null
 // Called when window is maximized
-let _onMaximize = null
+let _onMaximize: Function | null = null
 // Called when the window loses focus
-let _onBlur = null
+let _onBlur: Function | null = null
 // Called when the window gains focus
-let _onFocus = null
+let _onFocus: Function | null = null
 
 // Window states
 let _isMaximized = false;
@@ -21,11 +21,11 @@ contextBridge.exposeInMainWorld('bridge', {
     toggleMaximizeRestore: () => ipcRenderer.send('toggle-maximize-restore'),
     minimize: () => ipcRenderer.send('minimize'),
     close: () => ipcRenderer.send('close'),
-    onHandleShortcut: (callback) => { _onHandleShortcut = callback },
-    onUnmaximize: (callback) => { _onUnmaximize = callback },
-    onMaximize: (callback) => { _onMaximize = callback },
-    onBlur: (callback) => { _onBlur = callback },
-    onFocus: (callback) => { _onFocus = callback },
+    onHandleShortcut: (callback: Function) => { _onHandleShortcut = callback },
+    onUnmaximize: (callback: Function) => { _onUnmaximize = callback },
+    onMaximize: (callback: Function) => { _onMaximize = callback },
+    onBlur: (callback: Function) => { _onBlur = callback },
+    onFocus: (callback: Function) => { _onFocus = callback },
     getIsMaximized: () => { return _isMaximized; },
     /**
      * Shows the open file dialog.
@@ -36,7 +36,7 @@ contextBridge.exposeInMainWorld('bridge', {
         ipcRenderer.send('show-open-file-dialog');
         // Create a promise that waits for the message coming back that the user has selected a file
         return new Promise((resolve) => {
-            ipcRenderer.once('file-selected', (e, response) => {
+            ipcRenderer.once('file-selected', (_, response) => {
                 resolve(response);
             });
         });
@@ -51,8 +51,7 @@ contextBridge.exposeInMainWorld('bridge', {
         ipcRenderer.send('show-save-file-dialog');
         // Create a promise that waits for the message coming back that the user has selected a file
         return new Promise((resolve) => {
-            ipcRenderer.once('file-selected', (e, response) => {
-                console.log(e, response);
+            ipcRenderer.once('file-selected', (_, response) => {
                 resolve(response);
             });
         });
@@ -60,16 +59,16 @@ contextBridge.exposeInMainWorld('bridge', {
     },
     /**
      * Reads the contents of a file and returns it
-     * @param {String} fileName 
+     * @param {string} fileName 
      * @returns 
      */
-    readFileAsync: (fileName) => {
+    readFileAsync: (fileName: string) => {
         ipcRenderer.send('read-file', fileName);
         // Create a promise that waits for the message coming back that the file has been read
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             try {
                 // Listen for the data to be sent from the main process
-                ipcRenderer.once('file-read', (e, response) => {
+                ipcRenderer.once('file-read', (_, response) => {
                     resolve(response);
 
                 });
@@ -87,17 +86,17 @@ contextBridge.exposeInMainWorld('bridge', {
      * @param {*} contents 
      * @returns 
      */
-    saveFileAsync: (fileName, contents) => {
+    saveFileAsync: (fileName: string, contents: any) => {
         ipcRenderer.send('write-file', fileName, contents);
         // Create a promise that waits for the message coming back that the file has been written
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             try {
                 // Listen for the data to be sent from the main process
-                ipcRenderer.once('file-written', (e, err) => {
+                ipcRenderer.once('file-written', (_, err) => {
                     console.log("file written")
                     if (err) { throw err; }
 
-                    resolve();
+                    resolve(true);
 
                 });
 
@@ -131,7 +130,7 @@ ipcRenderer.on('blur', () => { _onBlur?.() })
 ipcRenderer.on('focus', () => { _onFocus?.() })
 
 // Handle global shortcuts sent from the main process
-ipcRenderer.on('handle-shortcut', (sender, args) => {
+ipcRenderer.on('handle-shortcut', (_, args) => {
     console.log(args)
     _onHandleShortcut?.(args)
 })

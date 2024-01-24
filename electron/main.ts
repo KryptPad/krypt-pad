@@ -1,10 +1,10 @@
 // Main electron api.
-import { app, protocol, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem } from 'electron'
+import { app, protocol, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem, SaveDialogOptions, OpenDialogOptions } from 'electron'
 // Library for working with directory paths.
 import path from 'node:path'
 // Library to keep track of the electron window state between uses.
-const windowStateKeeper = require('electron-window-state');
-const { readFile, writeFile } = require('fs');
+import windowStateKeeper from 'electron-window-state';
+import { readFile, writeFile } from 'fs';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts';
 // Installs electron dev tools in the Developer Tools window.
 //const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
@@ -192,8 +192,9 @@ app.whenReady().then(async () => {
 
   // Listen for message to show the open file dialog
   ipcMain.on('show-open-file-dialog', async () => {
+    if (!win) { return; }
 
-    const options = {
+    const options: OpenDialogOptions = {
       properties: ['openFile'],
       filters,
     };
@@ -205,8 +206,9 @@ app.whenReady().then(async () => {
 
   // Listen for message to show the save file dialog
   ipcMain.on('show-save-file-dialog', async () => {
+    if (!win) { return; }
 
-    const options = {
+    const options: SaveDialogOptions = {
       properties: ['showOverwriteConfirmation'],
       filters,
     };

@@ -1,4 +1,4 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { RouteLocationNormalizedLoaded, createRouter, createWebHashHistory } from 'vue-router'
 import StartView from '@/views/StartView.vue'
 
 const routes = [
@@ -16,7 +16,7 @@ const routes = [
     path: '/item/:id?',
     name: 'item',
     component: () => import(/* webpackChunkName: "item" */ '../views/ItemView.vue'),
-    props: (route) => {
+    props: (route: RouteLocationNormalizedLoaded) => {
       return {
           id: route.params.id
       };
