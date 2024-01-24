@@ -105,19 +105,17 @@ async function createWindow() {
 menu.append(new MenuItem({
   label: 'File',
   submenu: [{
-    role: '',
     label: 'New File',
     accelerator: SHORTCUT_NEW,
     click: () => { win?.webContents.send('handle-shortcut', SHORTCUT_NEW); }
   },
   {
-    role: '',
     label: 'Open File',
     accelerator: SHORTCUT_OPEN,
     click: () => { win?.webContents.send('handle-shortcut', SHORTCUT_OPEN); }
   },
   {
-    role: '',
+    role: 'close',
     label: 'Close File',
     accelerator: SHORTCUT_CLOSE,
     click: () => { win?.webContents.send('handle-shortcut', SHORTCUT_CLOSE); }
@@ -193,7 +191,7 @@ app.whenReady().then(async () => {
   });
 
   // Listen for message to show the open file dialog
-  ipcMain.on('show-open-file-dialog', async (e) => {
+  ipcMain.on('show-open-file-dialog', async () => {
 
     const options = {
       properties: ['openFile'],
@@ -206,7 +204,7 @@ app.whenReady().then(async () => {
   });
 
   // Listen for message to show the save file dialog
-  ipcMain.on('show-save-file-dialog', async (e) => {
+  ipcMain.on('show-save-file-dialog', async () => {
 
     const options = {
       properties: ['showOverwriteConfirmation'],
@@ -220,22 +218,22 @@ app.whenReady().then(async () => {
 
   // Listens to the read-file message and opens the file. The file is read and the contents
   // are sent to the renderer process.
-  ipcMain.on('read-file', async (e, fileName) => {
+  ipcMain.on('read-file', async (_, fileName) => {
     // Open the file for reading
-    const fileContents = readFile(fileName, (err, data) => {
+    readFile(fileName, (err: any, data: any) => {
       if (err) { throw err; }
       // Send the data to the render process
-      win.webContents.send("file-read", data);
+      win?.webContents.send("file-read", data);
 
     });
 
   });
 
   // Listen to the message to write the contents to the file 
-  ipcMain.on('write-file', async (e, fileName, contents) => {
-    writeFile(fileName, contents, (err) => {
+  ipcMain.on('write-file', async (_, fileName, contents) => {
+    writeFile(fileName, contents, (err: any) => {
       // Tell the renderer that the main process has written the file.
-      win.webContents.send("file-written", err);
+      win?.webContents.send("file-written", err);
     });
 
   });
