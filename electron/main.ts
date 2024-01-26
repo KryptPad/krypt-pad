@@ -6,6 +6,8 @@ import path from 'node:path'
 import windowStateKeeper from 'electron-window-state';
 import { readFile, writeFile } from 'fs';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts';
+import { decryptAsync, encryptAsync } from './krypto';
+
 // Installs electron dev tools in the Developer Tools window.
 //const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
 
@@ -220,25 +222,45 @@ app.whenReady().then(async () => {
 
   // Listens to the read-file message and opens the file. The file is read and the contents
   // are sent to the renderer process.
-  ipcMain.on('read-file', async (_, fileName) => {
+  ipcMain.on('read-file', async (_, fileName, passphrase) => {
     // Open the file for reading
-    readFile(fileName, (err: any, data: any) => {
+    readFile(fileName, async (err: any, data: any) => {
       if (err) { throw err; }
-      // Send the data to the render process
-      win?.webContents.send("file-read", data);
+
+      try {
+        const decryptedData = await decryptAsync(data, passphrase);
+        // Send the data to the render process
+        win?.webContents.send("file-read", decryptedData);
+      }
+      catch (ex) {
+        throw ex;
+      }
+
 
     });
 
   });
 
   // Listen to the message to write the contents to the file 
-  ipcMain.on('write-file', async (_, fileName, contents) => {
-    writeFile(fileName, contents, (err: any) => {
+  ipcMain.on('write-file', async (_, fileName, plainText, passphrase) => {
+
+    // Encrypt the data
+    const encryptedData = await encryptAsync(plainText, passphrase);
+
+    writeFile(fileName, encryptedData, (err: any) => {
       // Tell the renderer that the main process has written the file.
       win?.webContents.send("file-written", err);
     });
 
   });
+
+  // // Encrypt
+  // ipcMain.on('encrypt', async (_, plainText, passphrase) => {
+  //   // Encrypt the data
+  //   const cipherData = await encryptAsync(plainText, passphrase);
+  //   // Send the encrypted data back
+  //   win?.webContents.send("file-written", err);
+  // });
 
   createWindow()
 

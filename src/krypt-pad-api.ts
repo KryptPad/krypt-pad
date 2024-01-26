@@ -1,7 +1,6 @@
 import { reactive, watch, ref, Ref } from 'vue';
 import { bridge } from '@/bridge';
 import { Category, Profile } from './krypt-pad-profile';
-//import { decryptAsync, encryptAsync } from '@/krypto';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
 import ConfirmDialogVue from './components/ConfirmDialog.vue';
 
@@ -59,16 +58,14 @@ class KryptPadAPI {
         // Set new filename
         this.fileName.value = selectedFile.filePaths[0];
 
+        // Prompt for passphrase to decrypt the file
+        this.passphrase.value = await this._requirePassphraseCallback?.(false);
+        if (!this.passphrase.value) { return; }
+
         // Read the file and get the data
-        const encryptedJSONString = await bridge.readFileAsync(this.fileName.value);
-        if (encryptedJSONString) {
-            // Prompt for passphrase to decrypt the file
-            this.passphrase.value = await this._requirePassphraseCallback?.(false);
-            if (!this.passphrase.value) { return; }
-
-            // Decrypt the json string
-            const jsonString = '';//await decryptAsync(encryptedJSONString, this.passphrase.value);
-
+        const jsonString = await bridge.readFileAsync(this.fileName.value, this.passphrase.value);
+        if (jsonString) {
+            
             // Load the profile
             const p = Profile.from(jsonString);
             if (p) {
@@ -161,10 +158,9 @@ class KryptPadAPI {
         // Encrypt the profile. But first, make sure we have a filename and a passphrase
         if (this.fileName.value && this.passphrase.value) {
             try {
-                // Encrypt the data
-                const cipherData = '';//await encryptAsync(JSON.stringify(this.profile.value), this.passphrase.value);
+                const plainText = JSON.stringify(this.profile.value);
                 // Write a file containig the encrypted data
-                await bridge.saveFileAsync(this.fileName.value, cipherData);
+                await bridge.saveFileAsync(this.fileName.value, plainText, this.passphrase.value);
 
             }
             catch (ex) {

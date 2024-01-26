@@ -62,8 +62,8 @@ contextBridge.exposeInMainWorld('bridge', {
      * @param {string} fileName 
      * @returns 
      */
-    readFileAsync: (fileName: string) => {
-        ipcRenderer.send('read-file', fileName);
+    readFileAsync: (fileName: string, passphrase: string) => {
+        ipcRenderer.send('read-file', fileName, passphrase);
         // Create a promise that waits for the message coming back that the file has been read
         return new Promise((resolve, reject) => {
             try {
@@ -81,13 +81,13 @@ contextBridge.exposeInMainWorld('bridge', {
         });
     },
     /**
-     * Saves contents to a file
+     * Encrypts and saves the profile to a file
      * @param {String} fileName 
-     * @param {*} contents 
+     * @param {*} plainText 
      * @returns 
      */
-    saveFileAsync: (fileName: string, contents: any) => {
-        ipcRenderer.send('write-file', fileName, contents);
+    saveFileAsync: (fileName: string, plainText: any, passphrase: string) => {
+        ipcRenderer.send('write-file', fileName, plainText, passphrase);
         // Create a promise that waits for the message coming back that the file has been written
         return new Promise((resolve, reject) => {
             try {
