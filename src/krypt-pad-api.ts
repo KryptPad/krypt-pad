@@ -1,7 +1,7 @@
 import { reactive, watch, ref, Ref } from 'vue';
 import { bridge } from '@/bridge';
 import { Category, Profile } from './krypt-pad-profile';
-import { decryptAsync, encryptAsync } from '@/krypto';
+//import { decryptAsync, encryptAsync } from '@/krypto';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
 import ConfirmDialogVue from './components/ConfirmDialog.vue';
 
@@ -67,7 +67,7 @@ class KryptPadAPI {
             if (!this.passphrase.value) { return; }
 
             // Decrypt the json string
-            const jsonString = await decryptAsync(encryptedJSONString, Buffer.from(this.passphrase.value, 'binary'));
+            const jsonString = '';//await decryptAsync(encryptedJSONString, this.passphrase.value);
 
             // Load the profile
             const p = Profile.from(jsonString);
@@ -162,9 +162,9 @@ class KryptPadAPI {
         if (this.fileName.value && this.passphrase.value) {
             try {
                 // Encrypt the data
-                const cipherBuffer = await encryptAsync(JSON.stringify(this.profile.value), Buffer.from(this.passphrase.value, 'binary'));
+                const cipherData = '';//await encryptAsync(JSON.stringify(this.profile.value), this.passphrase.value);
                 // Write a file containig the encrypted data
-                await bridge.saveFileAsync(this.fileName.value, cipherBuffer);
+                await bridge.saveFileAsync(this.fileName.value, cipherData);
 
             }
             catch (ex) {
