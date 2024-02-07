@@ -2,7 +2,8 @@ import { reactive, watch, ref, Ref } from 'vue';
 import { bridge } from '@/bridge';
 import { Category, Profile } from './krypt-pad-profile';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
-import ConfirmDialogVue from './components/ConfirmDialog.vue';
+import ConfirmDialog from './components/ConfirmDialog.vue';
+import AlertDialog from './components/AlertDialog.vue';
 
 class KryptPadAPI {
     fileOpened = ref(false);
@@ -11,7 +12,8 @@ class KryptPadAPI {
     passphrase = ref<string | null>(null);
     router: Router | null = null;
     route: RouteLocationNormalizedLoaded | null = null;
-    confirmDialog: Ref<InstanceType<typeof ConfirmDialogVue> | null> | null = null;
+    confirmDialog: Ref<InstanceType<typeof ConfirmDialog> | null> | null = null;
+    alertDialog?: Ref<InstanceType<typeof AlertDialog> | null>;
 
     // Callback for requiring passphrase
     private _requirePassphraseCallback: Function | null = null;
@@ -60,14 +62,14 @@ class KryptPadAPI {
 
         // Prompt for passphrase to decrypt the file
         this.passphrase.value = await this._requirePassphraseCallback?.(false);
-        if (!this.passphrase.value) { return; }
+        if (!this.passphrase.value || !this.fileName.value) { return; }
 
         // Read the file and get the data
-        const jsonString = await bridge.readFileAsync(this.fileName.value, this.passphrase.value);
-        if (jsonString) {
-            
+        const ipcData = await bridge.readFileAsync(this.fileName.value, this.passphrase.value);
+        if (ipcData?.data) {
+
             // Load the profile
-            const p = Profile.from(jsonString);
+            const p = Profile.from(ipcData.data);
             if (p) {
                 const rp = reactive(p);
                 this.profile.value = rp;
@@ -78,6 +80,11 @@ class KryptPadAPI {
             this.fileOpened.value = true;
 
             this.router?.push({ name: "home" });
+
+        } else if (ipcData.error) {
+            // Display alert
+            await this.alertDialog?.value?.alert(ipcData.error, { color: 'red' });
+            
         }
 
     }
@@ -153,7 +160,7 @@ class KryptPadAPI {
     /**
      * Encrypts the profile and commits it to a file
      */
-    commitProfileAsync = async() => {
+    commitProfileAsync = async () => {
         console.log("writing file")
         // Encrypt the profile. But first, make sure we have a filename and a passphrase
         if (this.fileName.value && this.passphrase.value) {

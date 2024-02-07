@@ -59,7 +59,7 @@
                 </v-btn-group>
 
             </div>
-            <confirm-dialog ref="confirmDialog1"></confirm-dialog>
+            <confirm-dialog ref="confirmDeletePrompt" color="red"></confirm-dialog>
 
         </v-container>
     </v-main>
@@ -78,7 +78,7 @@ const router = useRouter();
 const kpAPI = inject<KryptPadAPI>("kpAPI")!;
 kpAPI.redirectToStartWhenNoProfile();
 
-const confirmDialog1 = ref<InstanceType<typeof ConfirmDialog>>();
+const confirmDeletePrompt = ref<InstanceType<typeof ConfirmDialog>>();
 const props = defineProps({ id: String });
 const isEditing = ref(false);
 const fieldName = ref<string | null>(null);
@@ -117,7 +117,7 @@ function backHome() {
 async function deleteItem() {
     if (!kpAPI.profile.value || !item) { return; }
 
-    if (!await confirmDialog1.value?.confirm('Are you sure you want to delete this item?')) {
+    if (!await confirmDeletePrompt.value?.confirm('Are you sure you want to delete this item?')) {
         return;
 
     }
@@ -134,7 +134,7 @@ async function deleteItem() {
 async function onDeleteField(field: Field) {
     if (!item) { return; }
 
-    if (!await confirmDialog1.value?.confirm('Are you sure you want to delete this field?')) {
+    if (!await confirmDeletePrompt.value?.confirm('Are you sure you want to delete this field?')) {
         return;
 
     }

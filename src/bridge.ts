@@ -1,5 +1,11 @@
+import { IPCDataContract } from "../electron/ipc";
+
+interface IBridge {
+    readFileAsync(fileName: string, passphrase: string): Promise<IPCDataContract<string | undefined>>
+}
+
 declare global {
-    interface Window { bridge: any; }
+    interface Window { bridge: IBridge; }
 }
 
 //window.bridge = window.bridge || {};

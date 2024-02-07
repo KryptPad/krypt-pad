@@ -1,6 +1,7 @@
 //window.global ||= window;
 
 import { contextBridge, ipcRenderer } from 'electron';
+import { IPCDataContract } from './ipc';
 
 // Shortcut handlers
 let _onHandleShortcut: Function | null = null;
@@ -62,7 +63,7 @@ contextBridge.exposeInMainWorld('bridge', {
      * @param {string} fileName 
      * @returns 
      */
-    readFileAsync: (fileName: string, passphrase: string) => {
+    readFileAsync: (fileName: string, passphrase: string): Promise<IPCDataContract<string | undefined>> => {
         ipcRenderer.send('read-file', fileName, passphrase);
         // Create a promise that waits for the message coming back that the file has been read
         return new Promise((resolve, reject) => {

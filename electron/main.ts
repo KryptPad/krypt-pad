@@ -7,6 +7,7 @@ import windowStateKeeper from 'electron-window-state';
 import { readFile, writeFile } from 'fs';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts';
 import { decryptAsync, encryptAsync } from './krypto';
+import { IPCDataContract } from './ipc.ts';
 
 // Installs electron dev tools in the Developer Tools window.
 //const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
@@ -224,17 +225,36 @@ app.whenReady().then(async () => {
   // are sent to the renderer process.
   ipcMain.on('read-file', async (_, fileName, passphrase) => {
     // Open the file for reading
-    readFile(fileName, async (err: any, data: any) => {
-      if (err) { throw err; }
-
+    readFile(fileName, async (err: NodeJS.ErrnoException | null, data: Buffer) => {
+      const ipcData: IPCDataContract<string | undefined> = {};
       try {
+        if (err) {
+          // An error occurred while reading the file
+          throw `Error opening file '${fileName}'. ${err?.message}`;
+
+        }
+
+        // Decrypt the file data
         const decryptedData = await decryptAsync(data, passphrase);
-        // Send the data to the render process
-        win?.webContents.send("file-read", decryptedData);
+        // Send the decrypted data back.
+        ipcData.data = decryptedData;
+
       }
       catch (ex) {
-        throw ex;
+
+        if (typeof ex === 'string') {
+          ipcData.error = ex;
+        }
+        else if (ex instanceof Error) {
+          ipcData.error = ex.message;
+        }
+
+        console.error(ipcData.error);
+
       }
+
+      // Send the message back to the renderer
+      win?.webContents.send("file-read", ipcData);
 
 
     });

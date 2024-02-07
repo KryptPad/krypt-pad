@@ -98,6 +98,7 @@
       @closed="passphraseDialogClosed"></passphrase-prompt>
 
     <confirm-dialog ref="confirmDialogPrompt"></confirm-dialog>
+    <alert-dialog ref="alertDialogPrompt"></alert-dialog>
   </v-app>
 </template>
 
@@ -105,6 +106,7 @@
 import TitleBar from '@/components/TitleBar.vue';
 import PassphrasePrompt from '@/components/PassphrasePrompt.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import AlertDialog from '@/components/AlertDialog.vue';
 import { computed, provide, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { bridge } from '@/bridge';
@@ -116,6 +118,8 @@ import KryptPadAPI from '@/krypt-pad-api';
 // Component refs
 const passphrasePrompter = ref<InstanceType<typeof PassphrasePrompt>>();
 const confirmDialogPrompt = ref<InstanceType<typeof ConfirmDialog> | null>(null);
+const alertDialogPrompt = ref<InstanceType<typeof AlertDialog> | null>(null);
+
 // Data
 const passphraseIsNew = ref(false);
 
@@ -126,6 +130,7 @@ const kpAPI = new KryptPadAPI();
 kpAPI.router = useRouter();
 kpAPI.route = useRoute();
 kpAPI.confirmDialog = confirmDialogPrompt;
+kpAPI.alertDialog = alertDialogPrompt;
 
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);

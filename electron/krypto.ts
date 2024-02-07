@@ -83,9 +83,17 @@ const decryptAsync = async (cipherData: Buffer, passphrase: crypto.BinaryLike): 
     const decipher = crypto.createDecipheriv(ALGORITHM, secretKey, iv);
     // Set the auth tag
     decipher.setAuthTag(authTag);
-    // Decrypt the data and concat the final block to the output buffer
-    const decrpyted = Buffer.concat([decipher.update(content), decipher.final()]);
-    return decrpyted.toString();
+
+    try {
+        // Decrypt the data and concat the final block to the output buffer
+        const decrpyted = Buffer.concat([decipher.update(content), decipher.final()]);
+        return decrpyted.toString();
+
+    } catch (ex) {
+        throw 'Could not decrypt the data. Please check the passphrase and try again.'
+        
+    }
+
 
 }
 

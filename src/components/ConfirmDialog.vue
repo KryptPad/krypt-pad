@@ -7,7 +7,7 @@
 
             <v-card-text>
                 <div class="d-flex">
-                    <v-icon icon="mdi-alert" color="red" size="3rem" class="mr-3"></v-icon>
+                    <v-icon icon="mdi-help-circle" :color="color" size="3rem" class="mr-3"></v-icon>
                     <div>
                         {{ confirmMessage }}
                     </div>
@@ -15,7 +15,7 @@
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn color="primary" @click="yesHandler">
+                <v-btn :color="color" @click="yesHandler">
                     Yes
                 </v-btn>
                 <v-btn @click="noHandler">
@@ -28,6 +28,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+
+defineProps({ color: { type: String, default: 'primary' } });
 
 const showDialog = ref(false);
 const confirmMessage = ref<string | null>(null);
