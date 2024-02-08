@@ -32,12 +32,12 @@ contextBridge.exposeInMainWorld('bridge', {
      * Shows the open file dialog.
      * @returns Promise
      */
-    showOpenFileDialogAsync: async () => {
+    showOpenFileDialogAsync: async (): Promise<Electron.OpenDialogReturnValue> => {
         // Send message to main process to open the dialog.
         ipcRenderer.send('show-open-file-dialog');
         // Create a promise that waits for the message coming back that the user has selected a file
         return new Promise((resolve) => {
-            ipcRenderer.once('file-selected', (_, response) => {
+            ipcRenderer.once('file-selected', (_, response: Electron.OpenDialogReturnValue) => {
                 resolve(response);
             });
         });
@@ -47,12 +47,12 @@ contextBridge.exposeInMainWorld('bridge', {
      * Shows the save file dialog
      * @returns Promise
      */
-    showSaveFileDialogAsync: async () => {
+    showSaveFileDialogAsync: async (): Promise<Electron.SaveDialogReturnValue> => {
         // Send message to main process to open the dialog.
         ipcRenderer.send('show-save-file-dialog');
         // Create a promise that waits for the message coming back that the user has selected a file
         return new Promise((resolve) => {
-            ipcRenderer.once('file-selected', (_, response) => {
+            ipcRenderer.once('file-selected', (_, response: Electron.SaveDialogReturnValue) => {
                 resolve(response);
             });
         });

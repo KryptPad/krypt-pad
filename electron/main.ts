@@ -36,7 +36,7 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Filters for open/save file dialog
-const filters = [
+const filters:Electron.FileFilter[] = [
   { name: 'Krypt Pad File', extensions: ['kpf'] },
   { name: 'All Files', extensions: ['*'] }
 ];

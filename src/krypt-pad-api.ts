@@ -2,8 +2,8 @@ import { reactive, watch, ref, Ref } from 'vue';
 import { bridge } from '@/bridge';
 import { Category, Profile } from './krypt-pad-profile';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
-import ConfirmDialog from './components/ConfirmDialog.vue';
-import AlertDialog from './components/AlertDialog.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import AlertDialog from '@/components/AlertDialog.vue';
 
 class KryptPadAPI {
     fileOpened = ref(false);
@@ -54,6 +54,8 @@ class KryptPadAPI {
         const selectedFile = await bridge.showOpenFileDialogAsync();
         if (selectedFile.canceled) { return; }
 
+        console.info(`Loaded file(s): `, selectedFile);
+
         // Close open file
         this.closeFile();
 
@@ -98,6 +100,8 @@ class KryptPadAPI {
         // Open save dialog to allow user to save a new file
         const selectedFile = await bridge.showSaveFileDialogAsync();
         if (selectedFile.canceled) { return; }
+
+        console.info(`Saved file(s): `, selectedFile);
 
         // Close open file
         this.closeFile();
