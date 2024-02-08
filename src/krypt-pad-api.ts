@@ -2,6 +2,8 @@ import { reactive, watch, ref, Ref } from 'vue';
 import { bridge } from '@/bridge';
 import { Category, Profile } from './krypt-pad-profile';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
+import { DecryptionError, getExceptionMessage } from '../common/error-utils';
+
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AlertDialog from '@/components/AlertDialog.vue';
 
@@ -61,31 +63,53 @@ class KryptPadAPI {
 
         // Set new filename
         this.fileName.value = selectedFile.filePaths[0];
+        let attempts = 0;
 
-        // Prompt for passphrase to decrypt the file
-        this.passphrase.value = await this._requirePassphraseCallback?.(false);
-        if (!this.passphrase.value || !this.fileName.value) { return; }
+        while (attempts < 3) {
 
-        // Read the file and get the data
-        const ipcData = await bridge.readFileAsync(this.fileName.value, this.passphrase.value);
-        if (ipcData?.data) {
+            // Prompt for passphrase to decrypt the file
+            this.passphrase.value = await this._requirePassphraseCallback?.(false);
+            if (!this.passphrase.value || !this.fileName.value) { break; }
 
-            // Load the profile
-            const p = Profile.from(ipcData.data);
-            if (p) {
-                const rp = reactive(p);
-                this.profile.value = rp;
-                this.watchProfile(this.profile.value);
+            // Read the file and get the data
+            try {
+                const ipcData = await bridge.readFileAsync(this.fileName.value, this.passphrase.value);
+                if (ipcData?.data) {
+                    // Load the profile
+                    const p = Profile.from(ipcData.data);
+                    if (p) {
+                        const rp = reactive(p);
+                        this.profile.value = rp;
+                        this.watchProfile(this.profile.value);
+                    }
+
+                    // Set fileOpen flag
+                    this.fileOpened.value = true;
+
+                    this.router?.push({ name: "home" });
+
+                    break;
+
+                } else if (ipcData.error) {
+                    throw ipcData.error;
+
+                }
             }
+            catch (ex) {
+                const err = getExceptionMessage(ex);
+                // Display alert
+                await this.alertDialog?.value?.error(err);
 
-            // Set fileOpen flag
-            this.fileOpened.value = true;
+                // Check if this is a decryption error. If so, increase attempt count.
+                if (ex instanceof DecryptionError){
+                    attempts++;
 
-            this.router?.push({ name: "home" });
+                } else {
+                    // This is not a decryption attempt error, break now.
+                    break;
+                }
 
-        } else if (ipcData.error) {
-            // Display alert
-            await this.alertDialog?.value?.alert(ipcData.error, { color: 'red' });
+            }
             
         }
 
@@ -165,19 +189,21 @@ class KryptPadAPI {
      * Encrypts the profile and commits it to a file
      */
     commitProfileAsync = async () => {
-        console.log("writing file")
+        console.info(`Writing changes to file '${this.fileName.value}'`);
         // Encrypt the profile. But first, make sure we have a filename and a passphrase
         if (this.fileName.value && this.passphrase.value) {
             try {
                 const plainText = JSON.stringify(this.profile.value);
                 // Write a file containig the encrypted data
-                await bridge.saveFileAsync(this.fileName.value, plainText, this.passphrase.value);
-
+                const ipcData = await bridge.saveFileAsync(this.fileName.value, plainText, this.passphrase.value);
+                if (ipcData.error) {
+                    throw ipcData.error;
+                }
             }
             catch (ex) {
-                // TODO: Replace with something better
-                alert(ex);
-                throw ex;
+                const err = getExceptionMessage(ex);
+                // Display alert
+                await this.alertDialog?.value?.error(err);
             }
 
         }

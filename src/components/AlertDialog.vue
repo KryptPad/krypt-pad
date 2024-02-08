@@ -2,7 +2,7 @@
     <v-dialog v-model="showDialog" persistent width="auto">
         <v-card>
             <v-card-title class="text-h5">
-                Alert
+                {{ title }}
             </v-card-title>
 
             <v-card-text>
@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import {IAlertOptions} from '@/interfaces';
+import { IAlertOptions } from '@/interfaces';
 
 // defineProps({
 //     color: { type: String, default: 'primary' },
@@ -37,16 +37,19 @@ const alertMessage = ref<string | null>(null);
 
 const color = ref('primary');
 const icon = ref('mdi-alert');
+const title = ref('Alert');
 
 let alertResolve: Function | null = null;
 
 /**
- * Shows the user a alert message
- * @param {String} message 
+ * 
+ * @param message Shows the user a alert message
+ * @param options Options to control how the alert is displayed
  */
-function alert(message: string, options?:IAlertOptions) {
-    color.value = options?.color ?? color.value;
-    icon.value = options?.icon ?? icon.value;
+function alert(message: string, options?: IAlertOptions): Promise<boolean> {
+    if (options?.color) { color.value = options?.color; }
+    if (options?.icon) { icon.value = options?.icon; }
+    if (options?.title) { title.value = options?.title; }
 
     showDialog.value = true;
     return new Promise((resolve) => {
@@ -55,10 +58,21 @@ function alert(message: string, options?:IAlertOptions) {
     });
 }
 
+/**
+ * Displays an alert styled as an error message
+ * @param message The error message to display
+ */
+function error(message: string) {
+    return alert(message, { color: 'red', title: 'Error' });
+}
+
+/**
+ * Handles when the user clicks ok and resolves the promise
+ */
 function okHandler() {
     alertResolve?.(true);
     showDialog.value = false;
 }
 
-defineExpose({ alert })
+defineExpose({ alert, error })
 </script>

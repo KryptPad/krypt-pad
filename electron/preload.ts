@@ -69,7 +69,8 @@ contextBridge.exposeInMainWorld('bridge', {
         return new Promise((resolve, reject) => {
             try {
                 // Listen for the data to be sent from the main process
-                ipcRenderer.once('file-read', (_, response) => {
+                ipcRenderer.once('file-read', (_, response: IPCDataContract<string | undefined>) => {
+                    console.log(response.err)
                     resolve(response);
 
                 });
@@ -87,24 +88,15 @@ contextBridge.exposeInMainWorld('bridge', {
      * @param {*} plainText 
      * @returns 
      */
-    saveFileAsync: (fileName: string, plainText: any, passphrase: string) => {
+    saveFileAsync: (fileName: string, plainText: any, passphrase: string): Promise<IPCDataContract<string | undefined>> => {
         ipcRenderer.send('write-file', fileName, plainText, passphrase);
         // Create a promise that waits for the message coming back that the file has been written
-        return new Promise((resolve, reject) => {
-            try {
-                // Listen for the data to be sent from the main process
-                ipcRenderer.once('file-written', (_, err) => {
-                    console.log("file written")
-                    if (err) { throw err; }
+        return new Promise((resolve) => {
+            // Listen for the data to be sent from the main process
+            ipcRenderer.once('file-written', (_, response: IPCDataContract<string | undefined>) => {
+                resolve(response);
 
-                    resolve(true);
-
-                });
-
-            } catch {
-                reject();
-
-            }
+            });
 
         });
     }

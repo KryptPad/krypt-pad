@@ -8,6 +8,7 @@ import { readFile, writeFile } from 'fs';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts';
 import { decryptAsync, encryptAsync } from './krypto';
 import { IPCDataContract } from './ipc.ts';
+import { DecryptionError, getExceptionMessage } from '../common/error-utils';
 
 // Installs electron dev tools in the Developer Tools window.
 //const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
@@ -36,7 +37,7 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Filters for open/save file dialog
-const filters:Electron.FileFilter[] = [
+const filters: Electron.FileFilter[] = [
   { name: 'Krypt Pad File', extensions: ['kpf'] },
   { name: 'All Files', extensions: ['*'] }
 ];
@@ -225,12 +226,12 @@ app.whenReady().then(async () => {
   // are sent to the renderer process.
   ipcMain.on('read-file', async (_, fileName, passphrase) => {
     // Open the file for reading
-    readFile(fileName, async (err: NodeJS.ErrnoException | null, data: Buffer) => {
+    readFile(fileName, async (err, data) => {
       const ipcData: IPCDataContract<string | undefined> = {};
       try {
         if (err) {
           // An error occurred while reading the file
-          throw `Error opening file '${fileName}'. ${err?.message}`;
+          throw new Error(`Error opening file '${fileName}'. ${err?.message}`);
 
         }
 
@@ -241,15 +242,12 @@ app.whenReady().then(async () => {
 
       }
       catch (ex) {
-
-        if (typeof ex === 'string') {
-          ipcData.error = ex;
-        }
-        else if (ex instanceof Error) {
-          ipcData.error = ex.message;
+        ipcData.error = ex;
+        if (ex instanceof DecryptionError){
+        ipcData.err = ex;
         }
 
-        console.error(ipcData.error);
+        console.error(ex);
 
       }
 
@@ -264,13 +262,28 @@ app.whenReady().then(async () => {
   // Listen to the message to write the contents to the file 
   ipcMain.on('write-file', async (_, fileName, plainText, passphrase) => {
 
-    // Encrypt the data
-    const encryptedData = await encryptAsync(plainText, passphrase);
+    const ipcData: IPCDataContract<string | undefined> = {};
+    try {
+      // Encrypt the data
+      const encryptedData = await encryptAsync(plainText, passphrase);
 
-    writeFile(fileName, encryptedData, (err: any) => {
-      // Tell the renderer that the main process has written the file.
-      win?.webContents.send("file-written", err);
-    });
+      writeFile(fileName, encryptedData, (err) => {
+        if (err) {
+          // An error occurred while reading the file
+          throw new Error(`Error saving file '${fileName}'. ${err?.message}`);
+
+        }
+
+      });
+    }
+    catch (ex) {
+      ipcData.error = ex;
+
+      console.error(ipcData.error);
+    }
+
+    // Tell the renderer that the main process has written the file.
+    win?.webContents.send("file-written", ipcData);
 
   });
 
