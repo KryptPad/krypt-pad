@@ -19,20 +19,32 @@ function getExceptionMessage(ex: unknown): string {
     return err;
 }
 
+enum ErrorCodes {
+    OK,
+    DECRYPT_ERROR
+
+}
+
+interface ErrorWrapper {
+    name?: string,
+    code?: ErrorCodes,
+    error?: Error
+}
+
 /**
  * Decryption error
  */
 class DecryptionError extends Error {
     constructor(message?: string) {
-      // 'Error' breaks prototype chain here
-      super(message); 
-  
-      // Restore prototype chain   
-      const actualProto = new.target.prototype;
-  
-      Object.setPrototypeOf(this, actualProto);
+        // 'Error' breaks prototype chain here
+        super(message);
+
+        // Restore prototype chain   
+        const actualProto = new.target.prototype;
+
+        Object.setPrototypeOf(this, actualProto);
     }
-  }
+}
 
 
 
