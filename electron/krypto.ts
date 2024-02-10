@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import {DecryptionError} from '../common/error-utils';
+import {KryptPadErrorCodes, KryptPadError} from '../common/error-utils';
 
 const ALGORITHM = 'aes-256-gcm';
 const KEY_ALGORITHM = 'sha256';
@@ -91,7 +91,7 @@ const decryptAsync = async (cipherData: Buffer, passphrase: crypto.BinaryLike): 
         return decrpyted.toString();
 
     } catch (ex) {
-        throw new DecryptionError('Could not decrypt the data. Please check the passphrase and try again.');
+        throw new KryptPadError('Could not decrypt the data. Please check the passphrase and try again.', KryptPadErrorCodes.DECRYPT_ERROR);
         
     }
 

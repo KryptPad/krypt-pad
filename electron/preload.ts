@@ -63,15 +63,16 @@ contextBridge.exposeInMainWorld('bridge', {
      * @param {string} fileName 
      * @returns 
      */
-    readFileAsync: (fileName: string, passphrase: string): Promise<IPCDataContract<string | undefined>> => {
+    readFileAsync: (fileName: string, passphrase: string): Promise<IPCDataContract<string>> => {
         ipcRenderer.send('read-file', fileName, passphrase);
         // Create a promise that waits for the message coming back that the file has been read
         return new Promise((resolve, reject) => {
             try {
                 // Listen for the data to be sent from the main process
-                ipcRenderer.once('file-read', (_, response: IPCDataContract<string | undefined>) => {
-                    console.log(response.err)
-                    resolve(response);
+                ipcRenderer.once('file-read', (_, response: IPCDataContract<string>) => {
+                    const ipcData = new IPCDataContract<string>(); //IPCDataContract.init<string>(response);
+                    console.log(ipcData)
+                    resolve(ipcData);
 
                 });
 
@@ -127,6 +128,29 @@ ipcRenderer.on('handle-shortcut', (_, args) => {
     console.log(args)
     _onHandleShortcut?.(args)
 })
+
+
+// --------- Expose some API to the Renderer process ---------
+contextBridge.exposeInMainWorld('ipcRenderer', withPrototype(ipcRenderer))
+
+// `exposeInMainWorld` can't detect attributes and methods of `prototype`, manually patching it.
+function withPrototype(obj: Record<string, any>) {
+  const protos = Object.getPrototypeOf(obj)
+
+  for (const [key, value] of Object.entries(protos)) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) continue
+
+    if (typeof value === 'function') {
+      // Some native APIs, like `NodeJS.EventEmitter['on']`, don't work in the Renderer process. Wrapping them into a function.
+      obj[key] = function (...args: any) {
+        return value.call(obj, ...args)
+      }
+    } else {
+      obj[key] = value
+    }
+  }
+  return obj
+}
 
 
 console.log("preload.js loaded ok")

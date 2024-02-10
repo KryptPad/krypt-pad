@@ -8,7 +8,7 @@ import { readFile, writeFile } from 'fs';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts';
 import { decryptAsync, encryptAsync } from './krypto';
 import { IPCDataContract } from './ipc.ts';
-import { DecryptionError, getExceptionMessage } from '../common/error-utils';
+import { KryptPadError } from '../common/error-utils';
 
 // Installs electron dev tools in the Developer Tools window.
 //const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
@@ -227,7 +227,7 @@ app.whenReady().then(async () => {
   ipcMain.on('read-file', async (_, fileName, passphrase) => {
     // Open the file for reading
     readFile(fileName, async (err, data) => {
-      const ipcData: IPCDataContract<string | undefined> = {};
+      const ipcData = new IPCDataContract<string>();
       try {
         if (err) {
           // An error occurred while reading the file
@@ -242,11 +242,8 @@ app.whenReady().then(async () => {
 
       }
       catch (ex) {
-        ipcData.error = ex;
-        if (ex instanceof DecryptionError){
-        ipcData.err = ex;
-        }
-
+        ipcData.error = KryptPadError.fromError(ex);
+       
         console.error(ex);
 
       }
@@ -262,7 +259,7 @@ app.whenReady().then(async () => {
   // Listen to the message to write the contents to the file 
   ipcMain.on('write-file', async (_, fileName, plainText, passphrase) => {
 
-    const ipcData: IPCDataContract<string | undefined> = {};
+    const ipcData = new IPCDataContract<string>();
     try {
       // Encrypt the data
       const encryptedData = await encryptAsync(plainText, passphrase);
@@ -277,7 +274,7 @@ app.whenReady().then(async () => {
       });
     }
     catch (ex) {
-      ipcData.error = ex;
+      ipcData.error = KryptPadError.fromError(ex);
 
       console.error(ipcData.error);
     }

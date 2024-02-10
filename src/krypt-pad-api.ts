@@ -1,11 +1,12 @@
 import { reactive, watch, ref, Ref } from 'vue';
-import { bridge } from '@/bridge';
+import { IPCBridge, bridge } from '@/bridge';
 import { Category, Profile } from './krypt-pad-profile';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
-import { DecryptionError, getExceptionMessage } from '../common/error-utils';
+import { KryptPadError, KryptPadErrorCodes, getExceptionMessage } from '../common/error-utils';
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AlertDialog from '@/components/AlertDialog.vue';
+import { IPCDataContract } from '../electron/ipc';
 
 class KryptPadAPI {
     fileOpened = ref(false);
@@ -73,7 +74,9 @@ class KryptPadAPI {
 
             // Read the file and get the data
             try {
-                const ipcData = await bridge.readFileAsync(this.fileName.value, this.passphrase.value);
+                
+                const ipcBridge = new IPCBridge();
+                const ipcData = await ipcBridge.readFileAsync(this.fileName.value, this.passphrase.value);
                 if (ipcData?.data) {
                     // Load the profile
                     const p = Profile.from(ipcData.data);
@@ -97,11 +100,13 @@ class KryptPadAPI {
             }
             catch (ex) {
                 const err = getExceptionMessage(ex);
+                console.error(err, ex);
+
                 // Display alert
                 await this.alertDialog?.value?.error(err);
 
                 // Check if this is a decryption error. If so, increase attempt count.
-                if (ex instanceof DecryptionError){
+                if (ex instanceof KryptPadError && ex.code === KryptPadErrorCodes.DECRYPT_ERROR) {
                     attempts++;
 
                 } else {
@@ -110,7 +115,7 @@ class KryptPadAPI {
                 }
 
             }
-            
+
         }
 
     }

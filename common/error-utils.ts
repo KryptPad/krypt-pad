@@ -1,3 +1,44 @@
+enum KryptPadErrorCodes {
+    OK,
+    GENERIC,
+    DECRYPT_ERROR
+
+}
+
+class KryptPadError {    
+    name: string;
+    message: string;
+    code: KryptPadErrorCodes
+    
+    constructor(message?: string, code?: KryptPadErrorCodes) {
+        this.name = "KryptPadError";
+        this.message = message ?? 'An unknown error occurred';
+        this.code = code ?? KryptPadErrorCodes.GENERIC;
+    }
+    
+
+    /**
+     * 
+     * @param err Creates
+     * @returns 
+     */
+    static fromError(err: unknown): KryptPadError {
+
+        if (err instanceof KryptPadError) {
+            // Return itself. It is already a KryptPadError
+            return err;
+
+        } else if (err instanceof Error) {
+            return new KryptPadError(err.message, KryptPadErrorCodes.GENERIC);
+
+        } else {
+            return new KryptPadError("An unknown error occurred.");
+
+        }
+
+    }
+}
+
 /**
  * Takes an exception thrown and gets the message from it
  * @param ex the exception thrown
@@ -12,6 +53,9 @@ function getExceptionMessage(ex: unknown): string {
     else if (ex instanceof Error) {
         err = ex.message;
     }
+    else if (ex instanceof KryptPadError) {
+        err = ex.message;
+    }
     else {
         err = 'An unknown error occurred.';
     }
@@ -19,33 +63,4 @@ function getExceptionMessage(ex: unknown): string {
     return err;
 }
 
-enum ErrorCodes {
-    OK,
-    DECRYPT_ERROR
-
-}
-
-interface ErrorWrapper {
-    name?: string,
-    code?: ErrorCodes,
-    error?: Error
-}
-
-/**
- * Decryption error
- */
-class DecryptionError extends Error {
-    constructor(message?: string) {
-        // 'Error' breaks prototype chain here
-        super(message);
-
-        // Restore prototype chain   
-        const actualProto = new.target.prototype;
-
-        Object.setPrototypeOf(this, actualProto);
-    }
-}
-
-
-
-export { getExceptionMessage, DecryptionError };
+export { getExceptionMessage, KryptPadError, KryptPadErrorCodes };
