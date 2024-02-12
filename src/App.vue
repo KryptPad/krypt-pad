@@ -109,7 +109,6 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AlertDialog from '@/components/AlertDialog.vue';
 import { computed, provide, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { bridge } from '@/bridge';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants';
 
 // Import the krypt-pad api
@@ -135,9 +134,8 @@ kpAPI.alertDialog = alertDialogPrompt;
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);
 
-// Register shortcut handlers
-bridge.onHandleShortcut(async (args: String) => {
-  console.log(args)
+// Register shortcut handler
+kpAPI.ipcBridge.ipcRenderer.on('handle-shortcut', async (_, args) => {
   switch (args) {
     case SHORTCUT_NEW:
       await kpAPI.createNewFileAsync();
@@ -151,7 +149,6 @@ bridge.onHandleShortcut(async (args: String) => {
       kpAPI.closeFile();
       break;
   }
-
 });
 
 // Define menu items
@@ -168,7 +165,7 @@ const menuItems = computed(() => {
         { divider: true },
         { title: 'Save File As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened.value },
         { divider: true },
-        { title: 'Exit', handler: bridge.close }
+        { title: 'Exit', handler: kpAPI.ipcBridge.close }
       ]
     },
     // {
@@ -202,7 +199,8 @@ kpAPI.onRequirePassphrase((isNew: boolean) => {
 });
 
 // Events
-function passphraseDialogClosed(passphrase: String) {
+function passphraseDialogClosed(passphrase: string) {
+  console.log("Dialog closed. Passphrase is:", passphrase)
   passphraseResolver(passphrase);
 }
 

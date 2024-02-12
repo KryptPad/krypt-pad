@@ -76,14 +76,16 @@ async function createWindow() {
 
   win.webContents.openDevTools()
 
+
+  if (mainWindowState.isMaximized) {
+    win.maximize();
+
+  }
+
   // Register listeners on the window, so we can update the state
   // automatically (the listeners will be removed when the window is closed)
   // and restore the maximized or full screen state
   mainWindowState.manage(win);
-
-  if (mainWindowState.isMaximized) {
-    win.webContents.send("maximize")
-  }
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
@@ -172,6 +174,11 @@ app.whenReady().then(async () => {
 
   });
 
+  // Return whether the window is maximized
+  ipcMain.handle('is-maximized', () => {
+    return win?.isMaximized();
+  });
+
   ipcMain.on('minimize', (e) => {
     //if (!validateSender(e.senderFrame)) { return; }
 
@@ -243,7 +250,7 @@ app.whenReady().then(async () => {
       }
       catch (ex) {
         ipcData.error = KryptPadError.fromError(ex);
-       
+
         console.error(ex);
 
       }

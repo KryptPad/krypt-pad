@@ -1,7 +1,7 @@
 <template>
     <!-- Passphrase prompt -->
-    <v-dialog v-model="dialogOpen" :persistent="true" max-width="30rem">
-        <v-card @keypress.enter="close">
+    <v-dialog v-model="dialogOpen" max-width="30rem">
+        <v-card @keypress.enter="ok">
             <v-card-title>{{ passphraseIsNew ? 'Enter New Passphrase' : 'Enter Passphrase' }}</v-card-title>
             <v-card-text>
                 <p v-if="passphraseIsNew">
@@ -14,7 +14,9 @@
                 <v-text-field :autofocus="true" v-model.lazy="passphrase" type="password" class="mt-3"></v-text-field>
             </v-card-text>
             <v-card-actions>
-                <v-btn color="primary" block @click="close">DONE</v-btn>
+                <v-spacer></v-spacer>
+                <v-btn prepend-icon="mdi-check" color="primary" @click="ok">OK</v-btn>
+                <v-btn prepend-icon="mdi-close" @click="cancel">CANCEL</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
@@ -22,7 +24,7 @@
 
 <script setup lang="ts">
 
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 // Props
 defineProps({
@@ -31,27 +33,39 @@ defineProps({
 
 const emit = defineEmits(["closed"]);
 // Data
-const passphrase = ref(null);
+const passphrase = ref();
 const dialogOpen = ref(false);
 
 /**
  * Shows the passphrase prompt dialog
  */
-function show(){
+function show() {
     dialogOpen.value = true;
 }
 
-defineExpose({show});
-
 // Events
-function close(){
-    emit("closed", passphrase.value);
-
-    // Close dialog
+function ok() {
+    // Close dialog.
     dialogOpen.value = false;
-
-    // Clear the passphrase from the input
-    passphrase.value = null;
 }
+
+function cancel() {
+    // Clear the passphrase from the input.
+    passphrase.value = undefined;
+
+    // Close dialog.
+    dialogOpen.value = false;
+}
+
+watch(dialogOpen, (newValue) => {
+    if (!newValue) {
+        // The dialog was closed.
+        emit("closed", passphrase.value);
+        // Clear the passphrase from the input.
+        passphrase.value = undefined
+    }
+});
+
+defineExpose({ show });
 
 </script>

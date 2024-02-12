@@ -1,12 +1,11 @@
 import { reactive, watch, ref, Ref } from 'vue';
-import { IPCBridge, bridge } from '@/bridge';
+import { IPCBridge } from '@/bridge';
 import { Category, Profile } from './krypt-pad-profile';
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router';
 import { KryptPadError, KryptPadErrorCodes, getExceptionMessage } from '../common/error-utils';
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AlertDialog from '@/components/AlertDialog.vue';
-import { IPCDataContract } from '../electron/ipc';
 
 class KryptPadAPI {
     fileOpened = ref(false);
@@ -17,6 +16,8 @@ class KryptPadAPI {
     route: RouteLocationNormalizedLoaded | null = null;
     confirmDialog: Ref<InstanceType<typeof ConfirmDialog> | null> | null = null;
     alertDialog?: Ref<InstanceType<typeof AlertDialog> | null>;
+    saving = ref(false);
+    ipcBridge = new IPCBridge();
 
     // Callback for requiring passphrase
     private _requirePassphraseCallback: Function | null = null;
@@ -54,7 +55,7 @@ class KryptPadAPI {
      */
     openExistingFileAsync = async () => {
         // Show the open file dialog
-        const selectedFile = await bridge.showOpenFileDialogAsync();
+        const selectedFile = await this.ipcBridge.showOpenFileDialogAsync();
         if (selectedFile.canceled) { return; }
 
         console.info(`Loaded file(s): `, selectedFile);
@@ -75,8 +76,7 @@ class KryptPadAPI {
             // Read the file and get the data
             try {
                 
-                const ipcBridge = new IPCBridge();
-                const ipcData = await ipcBridge.readFileAsync(this.fileName.value, this.passphrase.value);
+                const ipcData = await this.ipcBridge.readFileAsync(this.fileName.value, this.passphrase.value);
                 if (ipcData?.data) {
                     // Load the profile
                     const p = Profile.from(ipcData.data);
@@ -127,7 +127,8 @@ class KryptPadAPI {
         // TODO: If there is already a file open, prompt the user if they are sure they want to create a new file
 
         // Open save dialog to allow user to save a new file
-        const selectedFile = await bridge.showSaveFileDialogAsync();
+
+        const selectedFile = await this.ipcBridge.showSaveFileDialogAsync();
         if (selectedFile.canceled) { return; }
 
         console.info(`Saved file(s): `, selectedFile);
@@ -164,7 +165,7 @@ class KryptPadAPI {
      */
     saveProfileAsAsync = async () => {
         // Open save dialog to allow user to save a new file
-        const selectedFile = await bridge.showSaveFileDialogAsync();
+        const selectedFile = await this.ipcBridge.showSaveFileDialogAsync();
         if (selectedFile.canceled) { return; }
 
         // Set new filename
@@ -200,13 +201,17 @@ class KryptPadAPI {
             try {
                 const plainText = JSON.stringify(this.profile.value);
                 // Write a file containig the encrypted data
-                const ipcData = await bridge.saveFileAsync(this.fileName.value, plainText, this.passphrase.value);
+                const ipcData = await this.ipcBridge.saveFileAsync(this.fileName.value, plainText, this.passphrase.value);
                 if (ipcData.error) {
                     throw ipcData.error;
                 }
+
+                console.info("Changes written to file.");
             }
             catch (ex) {
                 const err = getExceptionMessage(ex);
+                console.error(err, ex);
+
                 // Display alert
                 await this.alertDialog?.value?.error(err);
             }
@@ -245,8 +250,11 @@ class KryptPadAPI {
     private watchProfile(profile: Profile) {
         watch(profile, async () => {
             // Commit the profile
-            console.log("watcher fired")
+            console.log("watcher fired");
+            this.saving.value = true;
             await this.commitProfileAsync();
+            this.saving.value = false;
+
         }, { deep: true });
     }
 }

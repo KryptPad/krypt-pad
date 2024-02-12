@@ -1,7 +1,9 @@
 <template>
     <div class="title-bar d-flex align-center w-100" :class="{ 'focused': isFocused }">
         <template v-if="$slots.icon">
-            <div class="ml-2 mr-2 icon-wrapper"><slot name="icon"></slot></div>
+            <div class="ml-2 mr-2 icon-wrapper">
+                <slot name="icon"></slot>
+            </div>
         </template>
 
         <div>{{ title }}</div>
@@ -28,8 +30,11 @@
 
 <script setup lang="ts">
 
-import { ref, onMounted } from 'vue';
-import { bridge } from '../bridge';
+import { ref, onMounted, inject } from 'vue';
+import KryptPadAPI from '@/krypt-pad-api';
+
+// Use the IPC renderer instance in the KP API
+const kpAPI = inject<KryptPadAPI>("kpAPI")!;
 
 // Define our reactive properties
 const isMaximized = ref(false);
@@ -40,40 +45,54 @@ defineProps({
 });
 
 // Window button handlers
+/**
+ * Minimizes the window
+ */
 function minimize() {
-    bridge.minimize();
+    kpAPI.ipcBridge.minimize();
 }
 
+/**
+ * Toggles the window maximize state
+ */
 function toggleMaximizeRestore() {
-    bridge.toggleMaximizeRestore();
+    kpAPI.ipcBridge.toggleMaximizeRestore();
 }
 
+/**
+ * Closes the app
+ */
 function close() {
-    bridge.close();
+    kpAPI.ipcBridge.close();
 }
 
-// Register any callback we need.
-// Register unmaximize callback
-bridge.onUnmaximize(() => {
+// When the window is unmaximized, an event in the main process is raised that sends a message
+// via IPC. This handler processes that message and raises a registered callback from the vue app.
+kpAPI.ipcBridge.ipcRenderer.on('unmaximize', () => {
     isMaximized.value = false;
-});
+})
 
-// Register maximized callback
-bridge.onMaximize(() => {
+
+// When the window is maximized, an event in the main process is raised that sends a message
+// via IPC. This handler processes that message and raises a registered callback from the vue app.
+kpAPI.ipcBridge.ipcRenderer.on('maximize', () => {
     isMaximized.value = true;
-});
 
-bridge.onBlur(() => {
+})
+
+kpAPI.ipcBridge.ipcRenderer.on('blur', () => {
     isFocused.value = false;
-});
 
-bridge.onFocus(() => {
+})
+
+kpAPI.ipcBridge.ipcRenderer.on('focus', () => {
     isFocused.value = true;
-});
+
+})
 
 // Component hooks
-onMounted(() => {
-    isMaximized.value = bridge.getIsMaximized();
+onMounted(async () => {
+    isMaximized.value = await kpAPI.ipcBridge.getIsMaximized();
 });
 
 </script>
@@ -107,7 +126,7 @@ $transition: background-color 200ms ease-in-out;
     line-height: $title-bar-height;
 }
 
-.title-bar .icon-wrapper > img {
+.title-bar .icon-wrapper>img {
     vertical-align: middle;
 }
 

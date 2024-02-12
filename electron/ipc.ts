@@ -1,4 +1,4 @@
-import { KryptPadError, KryptPadErrorCodes } from "../common/error-utils";
+import { KryptPadError } from "../common/error-utils";
 
 /**
  * For interprocess communication. Defines a general contract to pass data and errors between
