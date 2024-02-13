@@ -43,6 +43,10 @@
           </v-menu>
 
         </template>
+
+        <template v-slot:info>
+          {{ windowInfo }}
+        </template>
       </title-bar>
     </v-sheet>
 
@@ -133,6 +137,14 @@ kpAPI.alertDialog = alertDialogPrompt;
 
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);
+
+const windowInfo = computed(()=>{
+  let infoText = kpAPI.fileName.value ?? '';
+  if (kpAPI.saving.value){
+    infoText += ' - Saving'
+  }
+  return infoText
+});
 
 // Register shortcut handler
 kpAPI.ipcBridge.ipcRenderer.on('handle-shortcut', async (_, args) => {

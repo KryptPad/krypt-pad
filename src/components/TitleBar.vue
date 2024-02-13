@@ -1,19 +1,24 @@
 <template>
-    <div class="title-bar d-flex align-center w-100" :class="{ 'focused': isFocused }">
-        <template v-if="$slots.icon">
-            <div class="ml-2 mr-2 icon-wrapper">
-                <slot name="icon"></slot>
-            </div>
-        </template>
+    <div class="title-bar d-flex align-center justify-space-between flex-nowrap w-100" :class="{ 'focused': isFocused }">
+
+
+        <!-- <template v-if="$slots.icon"> -->
+        <div class="ml-2 mr-2 icon-wrapper">
+            <slot name="icon"></slot>
+        </div>
+        <!-- </template> -->
 
         <div>{{ title }}</div>
 
-        <div class="ml-3 title-bar-menu">
+        <div class="mx-3 title-bar-menu">
             <slot name="menu">
 
             </slot>
         </div>
 
+        <div>
+            <slot name="info"></slot>
+        </div>
 
         <div class="ml-auto">
             <button class="title-bar-button title-bar-button-minimize" type="button" @click="minimize"><v-icon
