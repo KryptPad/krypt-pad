@@ -18,7 +18,7 @@
               <v-btn v-bind="props" size="small" flat>{{ menu.title }}</v-btn>
             </template>
 
-            <v-list>
+            <v-list elevation="3">
               <template v-for="(item, itemIndex) in menu.items" :key="itemIndex">
 
                 <v-list-item v-if="!item.divider" :value="itemIndex" @click="item.handler"
