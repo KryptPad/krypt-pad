@@ -6,6 +6,7 @@ import { KryptPadError, KryptPadErrorCodes, getExceptionMessage } from '../commo
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AlertDialog from '@/components/AlertDialog.vue';
+import { ensureExtension } from './utils';
 
 class KryptPadAPI {
     fileOpened = ref(false);
@@ -64,7 +65,7 @@ class KryptPadAPI {
         this.closeFile();
 
         // Set new filename
-        this.fileName.value = selectedFile.filePaths[0];
+        this.fileName.value = ensureExtension(selectedFile.filePaths[0], 'kpf');
         let attempts = 0;
 
         while (attempts < 3) {
@@ -75,7 +76,7 @@ class KryptPadAPI {
 
             // Read the file and get the data
             try {
-                
+
                 const ipcData = await this.ipcBridge.readFileAsync(this.fileName.value, this.passphrase.value);
                 if (ipcData?.data) {
                     // Load the profile
@@ -129,7 +130,7 @@ class KryptPadAPI {
         // Open save dialog to allow user to save a new file
 
         const selectedFile = await this.ipcBridge.showSaveFileDialogAsync();
-        if (selectedFile.canceled) { return; }
+        if (selectedFile.canceled || !selectedFile.filePath) { return; }
 
         console.info(`Saved file(s): `, selectedFile);
 
@@ -137,7 +138,7 @@ class KryptPadAPI {
         this.closeFile();
 
         // Set new filename
-        this.fileName.value = selectedFile.filePath;
+        this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf');
 
         // Prompt for new passphrase
         this.passphrase.value = await this._requirePassphraseCallback?.(true);
@@ -166,10 +167,10 @@ class KryptPadAPI {
     saveProfileAsAsync = async () => {
         // Open save dialog to allow user to save a new file
         const selectedFile = await this.ipcBridge.showSaveFileDialogAsync();
-        if (selectedFile.canceled) { return; }
+        if (selectedFile.canceled || !selectedFile.filePath) { return; }
 
         // Set new filename
-        this.fileName.value = selectedFile.filePath;
+        this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf');
 
         // Prompt for new passphrase
         this.passphrase.value = await this._requirePassphraseCallback?.(true);

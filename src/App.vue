@@ -117,6 +117,7 @@ import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants';
 
 // Import the krypt-pad api
 import KryptPadAPI from '@/krypt-pad-api';
+import { getFileName } from './utils';
 
 // Component refs
 const passphrasePrompter = ref<InstanceType<typeof PassphrasePrompt>>();
@@ -138,9 +139,9 @@ kpAPI.alertDialog = alertDialogPrompt;
 // Provide the krypt pad API for other components to inject
 provide("kpAPI", kpAPI);
 
-const windowInfo = computed(()=>{
-  let infoText = kpAPI.fileName.value ?? '';
-  if (kpAPI.saving.value){
+const windowInfo = computed(() => {
+  let infoText = getFileName(kpAPI.fileName.value ?? '');
+  if (kpAPI.saving.value) {
     infoText += ' - Saving'
   }
   return infoText
