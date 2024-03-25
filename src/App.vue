@@ -117,7 +117,7 @@ import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants';
 
 // Import the krypt-pad api
 import KryptPadAPI from '@/krypt-pad-api';
-import { getFileName } from './utils';
+import { getFileName } from '@/utils';
 
 // Component refs
 const passphrasePrompter = ref<InstanceType<typeof PassphrasePrompt>>();
@@ -129,6 +129,7 @@ const passphraseIsNew = ref(false);
 
 // Main API
 const kpAPI = new KryptPadAPI();
+
 
 // Initialize the API
 kpAPI.router = useRouter();

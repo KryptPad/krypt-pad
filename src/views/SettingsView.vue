@@ -21,16 +21,22 @@
 
 <script setup lang="ts">
 
-import { watch, ref } from 'vue';
+import { AppSettings } from '@/app-settings';
+import { IPCBridge } from '@/bridge';
+import { watch, ref, inject } from 'vue';
 import { useTheme } from 'vuetify';
 
+const ipcBridge = new IPCBridge();
+const appSettings = inject<AppSettings>('appSettings')!;
 const theme = useTheme();
 const lightMode = ref(!theme.global.current.value.dark);
 
-watch(lightMode, () => {
-    console.log(theme)
+watch(lightMode, (newValue) => {
+    // Update theme
     theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
-
+    // Set new value
+    appSettings.lightMode = newValue;
+    ipcBridge.saveConfigFile(appSettings);
 });
 
 </script>

@@ -1,16 +1,17 @@
 import { IPCDataContract } from "../electron/ipc";
+import { AppSettings } from "./app-settings";
 
-interface IBridge {
-}
+// interface IBridge {
+// }
 
-declare global {
-    interface Window { bridge: IBridge; }
-}
+// declare global {
+//     interface Window { bridge: IBridge; }
+// }
 
-/**
- * This script gets the context bridge between main process and render process via IPC.
- */
-const bridge = window.bridge;
+// /**
+//  * This script gets the context bridge between main process and render process via IPC.
+//  */
+// const bridge = window.bridge;
 
 
 /**
@@ -70,6 +71,24 @@ class IPCBridge {
 
         });
     }
+
+
+async saveConfigFile(config: any){
+    const response = await this.ipcRenderer.invoke('save-config', JSON.stringify(config));
+    const ipcData = IPCDataContract.load(response);
+    return ipcData;
+}
+
+async loadConfigFile() :Promise<IPCDataContract<AppSettings>> {
+    const response = await this.ipcRenderer.invoke('load-config');
+    if (response?.data)
+    {
+        const appSettings = JSON.parse(response.data)
+        return IPCDataContract.load<AppSettings>(appSettings);
+    }
+    return response;
+}
+
 
     /**
      * Shows the open file dialog.
@@ -131,4 +150,4 @@ class IPCBridge {
     }
 }
 
-export { bridge, IPCBridge };
+export { IPCBridge };

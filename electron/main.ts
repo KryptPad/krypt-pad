@@ -4,7 +4,7 @@ import { app, protocol, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem, S
 import path from 'node:path'
 // Library to keep track of the electron window state between uses.
 import windowStateKeeper from 'electron-window-state';
-import { readFile, writeFile } from 'fs';
+import { writeFile, readFile } from 'fs/promises';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts';
 import { decryptAsync, encryptAsync } from './krypto';
 import { IPCDataContract } from './ipc.ts';
@@ -27,7 +27,6 @@ import { KryptPadError } from '../common/error-utils';
 // │
 process.env.DIST = path.join(__dirname, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
-
 
 let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
@@ -232,34 +231,25 @@ app.whenReady().then(async () => {
   // Listens to the read-file message and opens the file. The file is read and the contents
   // are sent to the renderer process.
   ipcMain.on('read-file', async (_, fileName, passphrase) => {
-    // Open the file for reading
-    readFile(fileName, async (err, data) => {
-      const ipcData = new IPCDataContract<string>();
-      try {
-        if (err) {
-          // An error occurred while reading the file
-          throw new Error(`Error opening file '${fileName}'. ${err?.message}`);
+    
+    const ipcData = new IPCDataContract<string>();
 
-        }
+    try {
+      // Open the file for reading
+      const encryptedData = await readFile(fileName);
+      // Decrypt the file data
+      ipcData.data = await decryptAsync(encryptedData, passphrase);
 
-        // Decrypt the file data
-        const decryptedData = await decryptAsync(data, passphrase);
-        // Send the decrypted data back.
-        ipcData.data = decryptedData;
+    }
+    catch (ex) {
+      ipcData.error = KryptPadError.fromError(ex);
 
-      }
-      catch (ex) {
-        ipcData.error = KryptPadError.fromError(ex);
+      console.error(ex);
 
-        console.error(ex);
+    }
 
-      }
-
-      // Send the message back to the renderer
-      win?.webContents.send("file-read", ipcData);
-
-
-    });
+    // Send the message back to the renderer
+    win?.webContents.send("file-read", ipcData);
 
   });
 
@@ -271,19 +261,14 @@ app.whenReady().then(async () => {
       // Encrypt the data
       const encryptedData = await encryptAsync(plainText, passphrase);
 
-      writeFile(fileName, encryptedData, (err) => {
-        if (err) {
-          // An error occurred while reading the file
-          throw new Error(`Error saving file '${fileName}'. ${err?.message}`);
+      await writeFile(fileName, encryptedData);
 
-        }
-
-      });
     }
     catch (ex) {
       ipcData.error = KryptPadError.fromError(ex);
 
       console.error(ipcData.error);
+
     }
 
     // Tell the renderer that the main process has written the file.
@@ -291,13 +276,47 @@ app.whenReady().then(async () => {
 
   });
 
-  // // Encrypt
-  // ipcMain.on('encrypt', async (_, plainText, passphrase) => {
-  //   // Encrypt the data
-  //   const cipherData = await encryptAsync(plainText, passphrase);
-  //   // Send the encrypted data back
-  //   win?.webContents.send("file-written", err);
-  // });
+
+  // Handles saving the application configuration
+  ipcMain.handle('save-config', async (_, data: string) => {
+    
+    const ipcData = new IPCDataContract();
+    try {
+      // Get the user data location
+      const userDataDirectory = app.getPath('userData');
+      await writeFile(path.join(userDataDirectory, 'settings.json'), data);
+
+    }
+    catch (ex) {
+      ipcData.error = KryptPadError.fromError(ex);
+
+      console.error(ipcData.error);
+
+    }
+
+    return ipcData;
+  });
+
+  // Handles loading the config file
+  ipcMain.handle('load-config', async () => {
+    
+    const ipcData = new IPCDataContract();
+    try {
+      // Get the user data location
+      const userDataDirectory = app.getPath('userData');
+      ipcData.data = await readFile(path.join(userDataDirectory, 'settings.json'), {encoding: 'utf-8'});
+
+    }
+    catch (ex) {
+      ipcData.error = KryptPadError.fromError(ex);
+
+      console.error(ipcData.error);
+
+    }
+
+    return ipcData;
+  });
+
 
   createWindow()
 
