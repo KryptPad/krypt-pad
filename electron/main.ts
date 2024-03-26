@@ -300,7 +300,7 @@ app.whenReady().then(async () => {
   // Handles loading the config file
   ipcMain.handle('load-config', async () => {
     
-    const ipcData = new IPCDataContract();
+    const ipcData = new IPCDataContract<string>();
     try {
       // Get the user data location
       const userDataDirectory = app.getPath('userData');

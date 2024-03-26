@@ -21,10 +21,10 @@ class IPCBridge {
 
     ipcRenderer = window.ipcRenderer;
 
-    constructor(){
-        
+    constructor() {
+
     }
-    
+
 
     /**
      * 
@@ -73,21 +73,19 @@ class IPCBridge {
     }
 
 
-async saveConfigFile(config: any){
-    const response = await this.ipcRenderer.invoke('save-config', JSON.stringify(config));
-    const ipcData = IPCDataContract.load(response);
-    return ipcData;
-}
-
-async loadConfigFile() :Promise<IPCDataContract<AppSettings>> {
-    const response = await this.ipcRenderer.invoke('load-config');
-    if (response?.data)
-    {
-        const appSettings = JSON.parse(response.data)
-        return IPCDataContract.load<AppSettings>(appSettings);
+    async saveConfigFile(config: any) {
+        const response = await this.ipcRenderer.invoke('save-config', JSON.stringify(config));
+        const ipcData = IPCDataContract.load(response);
+        return ipcData;
     }
-    return response;
-}
+
+    async loadConfigFile(): Promise<IPCDataContract<AppSettings>> {
+        const response = await this.ipcRenderer.invoke('load-config');
+        const appSettings = Object.assign(new AppSettings(), JSON.parse(response.data));
+        response.data = appSettings;
+        const ipcData = IPCDataContract.load<AppSettings>(response);
+        return ipcData;
+    }
 
 
     /**
