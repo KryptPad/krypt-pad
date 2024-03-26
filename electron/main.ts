@@ -7,8 +7,9 @@ import windowStateKeeper from 'electron-window-state';
 import { writeFile, readFile } from 'fs/promises';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts';
 import { decryptAsync, encryptAsync } from './krypto';
-import { IPCDataContract } from './ipc.ts';
+import { IPCDataContract, IPCData } from './ipc.ts';
 import { KryptPadError } from '../common/error-utils';
+import { AppSettings } from '@/app-settings.ts';
 
 // Installs electron dev tools in the Developer Tools window.
 //const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
@@ -231,7 +232,7 @@ app.whenReady().then(async () => {
   // Listens to the read-file message and opens the file. The file is read and the contents
   // are sent to the renderer process.
   ipcMain.on('read-file', async (_, fileName, passphrase) => {
-    
+
     const ipcData = new IPCDataContract<string>();
 
     try {
@@ -279,8 +280,8 @@ app.whenReady().then(async () => {
 
   // Handles saving the application configuration
   ipcMain.handle('save-config', async (_, data: string) => {
-    
-    const ipcData = new IPCDataContract();
+
+    const ipcData: IPCData<string> = {};
     try {
       // Get the user data location
       const userDataDirectory = app.getPath('userData');
@@ -299,12 +300,12 @@ app.whenReady().then(async () => {
 
   // Handles loading the config file
   ipcMain.handle('load-config', async () => {
-    
-    const ipcData = new IPCDataContract<string>();
+
+    const ipcData: IPCData<string> = {};
     try {
       // Get the user data location
       const userDataDirectory = app.getPath('userData');
-      ipcData.data = await readFile(path.join(userDataDirectory, 'settings.json'), {encoding: 'utf-8'});
+      ipcData.data = await readFile(path.join(userDataDirectory, 'settings.json'), { encoding: 'utf-8' });
 
     }
     catch (ex) {

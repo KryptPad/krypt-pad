@@ -1,5 +1,10 @@
 import { KryptPadError } from "../common/error-utils";
 
+interface IPCData<T> {
+    data?: T;
+    error?: KryptPadError;
+}
+
 /**
  * For interprocess communication. Defines a general contract to pass data and errors between
  * the main and render processes.
@@ -31,4 +36,4 @@ class IPCDataContract<T> {
 
 }
 
-export { IPCDataContract };
+export { IPCDataContract, type IPCData };

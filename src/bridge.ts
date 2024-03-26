@@ -1,4 +1,5 @@
-import { IPCDataContract } from "../electron/ipc";
+import { KryptPadError } from "../common/error-utils";
+import { IPCData, IPCDataContract } from "../electron/ipc";
 import { AppSettings } from "./app-settings";
 
 // interface IBridge {
@@ -24,7 +25,6 @@ class IPCBridge {
     constructor() {
 
     }
-
 
     /**
      * 
@@ -72,21 +72,39 @@ class IPCBridge {
         });
     }
 
-
-    async saveConfigFile(config: any) {
+    /**
+     * Saves the user's application settings
+     * @param config An AppSettings object to save
+     */
+    async saveConfigFile(config: AppSettings) {
         const response = await this.ipcRenderer.invoke('save-config', JSON.stringify(config));
-        const ipcData = IPCDataContract.load(response);
-        return ipcData;
+        if (response.error) {
+            // Throw the error
+            throw KryptPadError.fromError(response.error);
+
+        }
+        
     }
 
-    async loadConfigFile(): Promise<IPCDataContract<AppSettings>> {
-        const response = await this.ipcRenderer.invoke('load-config');
-        const appSettings = Object.assign(new AppSettings(), JSON.parse(response.data));
-        response.data = appSettings;
-        const ipcData = IPCDataContract.load<AppSettings>(response);
-        return ipcData;
-    }
+    /**
+     * Loads the user's application settings
+     * @returns the user's application settings
+     */
+    async loadConfigFile(): Promise<AppSettings | undefined> {
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('load-config');
+        if (response.error) {
+            // Throw the error
+            throw KryptPadError.fromError(response.error);
 
+        } else if (response.data) {
+            // Serialize the AppSettings and return it
+            const appSettings = Object.assign(new AppSettings(), JSON.parse(response.data));
+            return appSettings;
+
+        }
+
+        return undefined;
+    }
 
     /**
      * Shows the open file dialog.
