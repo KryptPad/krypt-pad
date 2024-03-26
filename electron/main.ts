@@ -231,9 +231,9 @@ app.whenReady().then(async () => {
 
   // Listens to the read-file message and opens the file. The file is read and the contents
   // are sent to the renderer process.
-  ipcMain.on('read-file', async (_, fileName, passphrase) => {
+  ipcMain.handle('read-file', async (_, fileName, passphrase) => {
 
-    const ipcData = new IPCDataContract<string>();
+    const ipcData: IPCData<string> = {};
 
     try {
       // Open the file for reading
@@ -249,8 +249,7 @@ app.whenReady().then(async () => {
 
     }
 
-    // Send the message back to the renderer
-    win?.webContents.send("file-read", ipcData);
+    return ipcData;
 
   });
 

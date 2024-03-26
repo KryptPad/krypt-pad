@@ -30,26 +30,19 @@ class IPCBridge {
      * 
      * @param fileName Name of the file to open and decrypt
      * @param passphrase The decryption passphrase
-     * @returns An IPCDataContract object containing the decrypted data or an error
+     * @returns A string containing the decrypted data
      */
-    readFileAsync(fileName: string, passphrase: string): Promise<IPCDataContract<string>> {
-        this.ipcRenderer.send('read-file', fileName, passphrase);
-        // Create a promise that waits for the message coming back that the file has been read
-        return new Promise((resolve, reject) => {
-            try {
-                // Listen for the data to be sent from the main process
-                this.ipcRenderer.once('file-read', (_, response: IPCDataContract<string>) => {
-                    const ipcData = IPCDataContract.load(response);
-                    resolve(ipcData);
+    async readFile(fileName: string, passphrase: string): Promise<string> {
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('read-file', fileName, passphrase);
+        if (response.data) {
+            return response.data;
 
-                });
+        } else {
+            // Throw the error
+            throw KryptPadError.fromError(response.error);
 
-            } catch {
-                reject();
+        }
 
-            }
-
-        });
     }
 
     /**
@@ -77,13 +70,13 @@ class IPCBridge {
      * @param config An AppSettings object to save
      */
     async saveConfigFile(config: AppSettings) {
-        const response = await this.ipcRenderer.invoke('save-config', JSON.stringify(config));
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('save-config', JSON.stringify(config));
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error);
 
         }
-        
+
     }
 
     /**

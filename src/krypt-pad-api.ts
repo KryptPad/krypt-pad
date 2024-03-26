@@ -74,13 +74,12 @@ class KryptPadAPI {
             this.passphrase.value = await this._requirePassphraseCallback?.(false);
             if (!this.passphrase.value || !this.fileName.value) { break; }
 
-            // Read the file and get the data
             try {
-
-                const ipcData = await this.ipcBridge.readFileAsync(this.fileName.value, this.passphrase.value);
-                if (ipcData?.data) {
+                // Read the file and get the data
+                const data = await this.ipcBridge.readFile(this.fileName.value, this.passphrase.value);
+                if (data) {
                     // Load the profile
-                    const p = Profile.from(ipcData.data);
+                    const p = Profile.from(data);
                     if (p) {
                         const rp = reactive(p);
                         this.profile.value = rp;
@@ -93,9 +92,6 @@ class KryptPadAPI {
                     this.router?.push({ name: "home" });
 
                     break;
-
-                } else if (ipcData.error) {
-                    throw ipcData.error;
 
                 }
             }
