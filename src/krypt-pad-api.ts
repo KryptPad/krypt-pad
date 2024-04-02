@@ -198,12 +198,9 @@ class KryptPadAPI {
             try {
                 const plainText = JSON.stringify(this.profile.value);
                 // Write a file containig the encrypted data
-                const ipcData = await this.ipcBridge.saveFileAsync(this.fileName.value, plainText, this.passphrase.value);
-                if (ipcData.error) {
-                    throw ipcData.error;
-                }
-
+                await this.ipcBridge.writeFile(this.fileName.value, plainText, this.passphrase.value);
                 console.info("Changes written to file.");
+                
             }
             catch (ex) {
                 const err = getExceptionMessage(ex);

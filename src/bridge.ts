@@ -1,5 +1,5 @@
 import { KryptPadError } from "../common/error-utils";
-import { IPCData, IPCDataContract } from "../electron/ipc";
+import { IPCData } from "../electron/ipc";
 import { AppSettings } from "./app-settings";
 
 // interface IBridge {
@@ -32,16 +32,15 @@ class IPCBridge {
      * @param passphrase The decryption passphrase
      * @returns A string containing the decrypted data
      */
-    async readFile(fileName: string, passphrase: string): Promise<string> {
+    async readFile(fileName: string, passphrase: string): Promise<string | undefined> {
         const response = <IPCData<string>>await this.ipcRenderer.invoke('read-file', fileName, passphrase);
-        if (response.data) {
-            return response.data;
-
-        } else {
+        if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error);
 
         }
+
+        return response.data;
 
     }
 
@@ -51,18 +50,13 @@ class IPCBridge {
      * @param {*} plainText 
      * @returns 
      */
-    saveFileAsync(fileName: string, plainText: any, passphrase: string): Promise<IPCDataContract<string>> {
-        this.ipcRenderer.send('write-file', fileName, plainText, passphrase);
-        // Create a promise that waits for the message coming back that the file has been written
-        return new Promise((resolve) => {
-            // Listen for the data to be sent from the main process
-            this.ipcRenderer.once('file-written', (_, response: IPCDataContract<string>) => {
-                const ipcData = IPCDataContract.load(response);
-                resolve(ipcData);
+    async writeFile(fileName: string, plainText: any, passphrase: string): Promise<void> {
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('write-file', fileName, plainText, passphrase);
+        if (response.error) {
+            // Throw the error
+            throw KryptPadError.fromError(response.error);
 
-            });
-
-        });
+        }
     }
 
     /**

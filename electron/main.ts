@@ -7,9 +7,8 @@ import windowStateKeeper from 'electron-window-state';
 import { writeFile, readFile } from 'fs/promises';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts';
 import { decryptAsync, encryptAsync } from './krypto';
-import { IPCDataContract, IPCData } from './ipc.ts';
+import { IPCData } from './ipc.ts';
 import { KryptPadError } from '../common/error-utils';
-import { AppSettings } from '@/app-settings.ts';
 
 // Installs electron dev tools in the Developer Tools window.
 //const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
@@ -254,13 +253,14 @@ app.whenReady().then(async () => {
   });
 
   // Listen to the message to write the contents to the file 
-  ipcMain.on('write-file', async (_, fileName, plainText, passphrase) => {
+  ipcMain.handle('write-file', async (_, fileName, plainText, passphrase) => {
 
-    const ipcData = new IPCDataContract<string>();
+    const ipcData: IPCData<string> = {};
+
     try {
       // Encrypt the data
       const encryptedData = await encryptAsync(plainText, passphrase);
-
+      // Open file for writing
       await writeFile(fileName, encryptedData);
 
     }
@@ -271,8 +271,7 @@ app.whenReady().then(async () => {
 
     }
 
-    // Tell the renderer that the main process has written the file.
-    win?.webContents.send("file-written", ipcData);
+    return ipcData
 
   });
 
