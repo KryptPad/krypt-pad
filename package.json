@@ -2,7 +2,7 @@
   "name": "krypt-pad",
   "version": "0.1.0",
   "private": false,
-  "description": "A secure note manager with AES256 bit encryption.",
+  "description": "A secure note manager with AES-256 bit encryption.",
   "author": "Krypt Pad",
   "license": "MIT",
   "main": "dist-electron/main.js",
