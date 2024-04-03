@@ -3,9 +3,9 @@
  */
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
+  "appId": "com.kryptpad.app",
   "asar": true,
-  "productName": "YourAppName",
+  "productName": "Krypt Pad",
   "directories": {
     "output": "release/${version}"
   },
