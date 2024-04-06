@@ -6,11 +6,6 @@
   "author": "Neptune Century Studios",
   "license": "MIT",
   "main": "dist-electron/main.js",
-  "build":{
-    "win":{
-      "icon": "public/safe.ico"
-    }
-  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && electron-builder",

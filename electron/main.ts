@@ -32,9 +32,6 @@ let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
-
-const isDevelopment = process.env.NODE_ENV !== 'production'
-
 // Filters for open/save file dialog
 const filters: Electron.FileFilter[] = [
   { name: 'Krypt Pad File', extensions: ['kpf'] },
@@ -64,7 +61,6 @@ async function createWindow() {
     y: mainWindowState.y,
     width: mainWindowState.width,
     height: mainWindowState.height,
-    //isMaximized: mainWindowState.isMaximized,
     titleBarStyle: "hidden",
     frame: false,
     icon: path.join(process.env.VITE_PUBLIC, "safe.ico"),
@@ -73,7 +69,10 @@ async function createWindow() {
     }
   })
 
-  win.webContents.openDevTools()
+  // Open dev tools if the app is in development mode
+  if (!app.isPackaged) {
+    win.webContents.openDevTools();
+  }
 
 
   if (mainWindowState.isMaximized) {
@@ -87,10 +86,11 @@ async function createWindow() {
   mainWindowState.manage(win);
 
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
+    win.loadURL(VITE_DEV_SERVER_URL);
+
   } else {
-    // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST, 'index.html'))
+
   }
 
   // Register listeners to window events. These will send a request to the bridge process through IPC.
@@ -148,19 +148,6 @@ app.on('activate', () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  // if (isDevelopment && !process.env.IS_TEST) {
-  //   // Install Vue Devtools
-  //   try {
-  //     await installExtension(VUEJS3_DEVTOOLS)
-  //   } catch (e) {
-  //     console.error('Vue Devtools failed to install:', e.toString())
-  //   }
-  // }
-
-  // Register global shortcuts
-
-
-
   // Process IPC messages
   ipcMain.on('toggle-maximize-restore', (e) => {
     //if (!validateSender(e.senderFrame)) { return; }
@@ -320,7 +307,7 @@ app.whenReady().then(async () => {
 })
 
 // Exit cleanly on request from parent process in development mode.
-if (isDevelopment) {
+if (!app.isPackaged) {
   if (process.platform === 'win32') {
     process.on('message', (data) => {
       if (data === 'graceful-exit') {
