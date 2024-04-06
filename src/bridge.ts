@@ -111,7 +111,9 @@ class IPCBridge {
     /**
      * Toggles the window maximize and restore
      */
-    toggleMaximizeRestore() { this.ipcRenderer.send('toggle-maximize-restore'); }
+    toggleMaximizeRestore() {
+        this.ipcRenderer.send('toggle-maximize-restore');
+    }
 
     /**
      * Minimizes the window

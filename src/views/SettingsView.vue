@@ -8,9 +8,10 @@
             </h1>
 
             <div class="d-flex">
-                <v-card class="pa-3">
+                <v-card class="pa-3 d-flex align-center">
+                    <div class="mr-3">Theme</div>
                     <v-switch v-model="lightMode" prepend-icon="mdi-weather-night"
-                        append-icon="mdi-weather-sunny"></v-switch>
+                        append-icon="mdi-weather-sunny" :hide-details="true"></v-switch>
                 </v-card>
 
             </div>
