@@ -2,10 +2,15 @@
   "name": "krypt-pad",
   "version": "0.1.0",
   "private": false,
-  "description": "A secure note manager with AES-256 bit encryption.",
-  "author": "Krypt Pad",
+  "description": "A secure note and password manager with AES-256 bit encryption.",
+  "author": "Neptune Century Studios",
   "license": "MIT",
   "main": "dist-electron/main.js",
+  "build":{
+    "win":{
+      "icon": "public/safe.ico"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && electron-builder",

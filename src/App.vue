@@ -214,8 +214,8 @@ kpAPI.onRequirePassphrase((isNew: boolean) => {
 
 // Events
 function passphraseDialogClosed(passphrase: string) {
-  console.log("Dialog closed. Passphrase is:", passphrase)
   passphraseResolver(passphrase);
+  
 }
 
 </script>

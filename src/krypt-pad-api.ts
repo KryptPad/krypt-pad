@@ -244,7 +244,6 @@ class KryptPadAPI {
     private watchProfile(profile: Profile) {
         watch(profile, async () => {
             // Commit the profile
-            console.log("watcher fired");
             this.saving.value = true;
             await this.commitProfileAsync();
             this.saving.value = false;

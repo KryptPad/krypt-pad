@@ -36,7 +36,6 @@ class Profile {
             const item = new Item(i.id, i.categoryId, i.title);
             item.notes = i.notes;
             item.starred = i.starred;
-            console.log(item)
 
             // Add fields to the item
             for (const field of i.fields) {
