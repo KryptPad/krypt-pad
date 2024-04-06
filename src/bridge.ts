@@ -2,19 +2,6 @@ import { KryptPadError } from "../common/error-utils";
 import { IPCData } from "../electron/ipc";
 import { AppSettings } from "./app-settings";
 
-// interface IBridge {
-// }
-
-// declare global {
-//     interface Window { bridge: IBridge; }
-// }
-
-// /**
-//  * This script gets the context bridge between main process and render process via IPC.
-//  */
-// const bridge = window.bridge;
-
-
 /**
  * New experimental bridge using ipcRenderer directly
  */
@@ -99,13 +86,7 @@ class IPCBridge {
      */
     async showOpenFileDialogAsync(): Promise<Electron.OpenDialogReturnValue> {
         // Send message to main process to open the dialog.
-        this.ipcRenderer.send('show-open-file-dialog');
-        // Create a promise that waits for the message coming back that the user has selected a file
-        return new Promise((resolve) => {
-            this.ipcRenderer.once('file-selected', (_, response: Electron.OpenDialogReturnValue) => {
-                resolve(response);
-            });
-        });
+        return <Electron.OpenDialogReturnValue>await this.ipcRenderer.invoke('show-open-file-dialog');
 
     }
 
@@ -115,13 +96,7 @@ class IPCBridge {
      */
     async showSaveFileDialogAsync(): Promise<Electron.SaveDialogReturnValue> {
         // Send message to main process to open the dialog.
-        this.ipcRenderer.send('show-save-file-dialog');
-        // Create a promise that waits for the message coming back that the user has selected a file
-        return new Promise((resolve) => {
-            this.ipcRenderer.once('file-selected', (_, response: Electron.SaveDialogReturnValue) => {
-                resolve(response);
-            });
-        });
+        return <Electron.SaveDialogReturnValue>await this.ipcRenderer.invoke('show-save-file-dialog');
 
     }
 

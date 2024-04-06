@@ -201,7 +201,7 @@ app.whenReady().then(async () => {
   });
 
   // Listen for message to show the open file dialog
-  ipcMain.on('show-open-file-dialog', async () => {
+  ipcMain.handle('show-open-file-dialog', async () => {
     if (!win) { return; }
 
     const options: OpenDialogOptions = {
@@ -209,13 +209,12 @@ app.whenReady().then(async () => {
       filters,
     };
 
-    const response = await dialog.showOpenDialog(win, options);
-    win?.webContents.send("file-selected", response);
+    return await dialog.showOpenDialog(win, options);
 
   });
 
   // Listen for message to show the save file dialog
-  ipcMain.on('show-save-file-dialog', async () => {
+  ipcMain.handle('show-save-file-dialog', async () => {
     if (!win) { return; }
 
     const options: SaveDialogOptions = {
@@ -223,8 +222,7 @@ app.whenReady().then(async () => {
       filters,
     };
 
-    const response = await dialog.showSaveDialog(win, options);
-    win.webContents.send("file-selected", response);
+    return await dialog.showSaveDialog(win, options);
 
   });
 
