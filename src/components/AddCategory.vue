@@ -27,7 +27,7 @@ const emit = defineEmits(['closed']);
 
 // Event handlers
 function addCategory() {
-    if (!title.value){ return; }
+    if (!title.value) { return; }
     // Add the category to the profile
     kpAPI.profile.value?.categories.push(new Category(null, title.value));
 
