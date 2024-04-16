@@ -38,4 +38,18 @@ function ensureExtension(filePath: string, extension: string): string{
 
 }
 
-export { getFileName, ensureExtension };
+/**
+ * Validates a value against a set of rules.
+ */
+function validateRules(rules: Array<Function>, value: any) : boolean {
+    // Iterate through each rule. All must pass.
+    for (const rule of rules){
+        if (rule(value) !== true){
+            return false;
+        }
+    }
+
+    return true;
+}
+
+export { getFileName, ensureExtension, validateRules };

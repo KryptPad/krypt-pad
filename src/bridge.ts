@@ -58,6 +58,8 @@ class IPCBridge {
 
         }
 
+        console.info("Configuration file written successfully.");
+
     }
 
     /**

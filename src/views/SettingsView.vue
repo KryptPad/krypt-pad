@@ -26,11 +26,12 @@
                     <v-card-title>Security</v-card-title>
                     <v-card-text class="d-flex align-center">
                         <div class="mr-3">
-                            <v-checkbox label="Automatically close file after idle timeout."></v-checkbox>
+                            <v-checkbox v-model="enableTimeout"
+                                label="Automatically close file when idle for:"></v-checkbox>
                         </div>
                         <div class="ml-auto" style="width: 10rem;">
                             <v-text-field v-model="timeoutInSeconds" type="number" :rules="validationRules"
-                            suffix="second(s)" ></v-text-field>
+                                suffix="second(s)" :disabled="!enableTimeout"></v-text-field>
                         </div>
                     </v-card-text>
 
@@ -48,25 +49,42 @@ import { AppSettings } from '@/app-settings';
 import { IPCBridge } from '@/bridge';
 import { watch, ref, inject } from 'vue';
 import { useTheme } from 'vuetify';
+import { validateRules } from '@/utils';
 
 const ipcBridge = new IPCBridge();
 const appSettings = inject<AppSettings>('appSettings')!;
 const theme = useTheme();
 
-const validationRules =  [
-    (v:number) => !!v || "This field is required",
-    (v:number) => ( v && v >= 0 ) || "Timeout must be greater than 0",
-    (v:number) => ( v && v <= 999 ) || "Timeout must be less than 1000",
+const validationRules = [
+    (v: number) => !!v || "This field is required",
+    (v: number) => (v && v >= 0) || "Timeout must be greater than 0",
+    (v: number) => (v && v <= 9999) || "Timeout must be less than 10000",
 ];
 
 const lightMode = ref(!theme.global.current.value.dark);
-const timeoutInSeconds = ref<Number | unknown>();
+const enableTimeout = ref(appSettings.enableTimeout);
+const timeoutInSeconds = ref(appSettings.timeoutInSeconds);
 
+// Watch the lightMode prop.
 watch(lightMode, (newValue) => {
     // Update theme
     theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
     // Set new value
     appSettings.lightMode = newValue;
+    ipcBridge.saveConfigFile(appSettings);
+});
+
+// Watch the enableTimeout prop.
+watch(enableTimeout, (newValue) => {
+    appSettings.enableTimeout = newValue;
+    ipcBridge.saveConfigFile(appSettings);
+});
+
+// Watch the enableTimeout prop.
+watch(timeoutInSeconds, (newValue) => {
+    if (!validateRules(validationRules, newValue)) { return; }
+    console.log(newValue)
+    appSettings.timeoutInSeconds = newValue;
     ipcBridge.saveConfigFile(appSettings);
 });
 
