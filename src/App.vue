@@ -111,13 +111,17 @@ import TitleBar from '@/components/TitleBar.vue';
 import PassphrasePrompt from '@/components/PassphrasePrompt.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import AlertDialog from '@/components/AlertDialog.vue';
-import { computed, provide, ref } from 'vue';
+import { computed, provide, ref, inject } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants';
 
 // Import the krypt-pad api
 import KryptPadAPI from '@/krypt-pad-api';
 import { getFileName } from '@/utils';
+//import { AppSettings } from '@/app-settings';
+
+// Get the app settings singleton
+//const appSettings = inject<AppSettings>('appSettings')!;
 
 // Component refs
 const passphrasePrompter = ref<InstanceType<typeof PassphrasePrompt>>();
