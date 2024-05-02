@@ -1,6 +1,6 @@
 import { KryptPadError } from "../common/error-utils";
 import { IPCData } from "../electron/ipc";
-import { AppSettings } from "./app-settings";
+import { SettingsManager } from "./app-settings";
 
 /**
  * New experimental bridge using ipcRenderer directly
@@ -50,8 +50,8 @@ class IPCBridge {
      * Saves the user's application settings
      * @param config An AppSettings object to save
      */
-    async saveConfigFile(config: AppSettings) {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('save-config', JSON.stringify(config));
+    async saveConfigFile(config: SettingsManager) {
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('save-config', config.toString());
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error);
@@ -66,7 +66,7 @@ class IPCBridge {
      * Loads the user's application settings
      * @returns the user's application settings
      */
-    async loadConfigFile(): Promise<AppSettings | undefined> {
+    async loadConfigFile(): Promise<SettingsManager | undefined> {
         const response = <IPCData<string>>await this.ipcRenderer.invoke('load-config');
         if (response.error) {
             // Throw the error
@@ -74,7 +74,7 @@ class IPCBridge {
 
         } else if (response.data) {
             // Serialize the AppSettings and return it
-            const appSettings = Object.assign(new AppSettings(), JSON.parse(response.data));
+            const appSettings = new SettingsManager(JSON.parse(response.data));
             return appSettings;
 
         }

@@ -7,12 +7,12 @@ import * as components from 'vuetify/components';
 import * as directives from 'vuetify/directives';
 import router from '@/router';
 import { IPCBridge } from '@/bridge';
-import { AppSettings } from '@/app-settings';
+import { SettingsManager } from '@/app-settings';
 // Main component
 import App from '@/App.vue';
 
 
-function loadApp(appSettings?: AppSettings) {
+function loadApp(appSettings?: SettingsManager) {
     // Configure vuetify
     const vuetify = createVuetify(
         {
@@ -25,7 +25,7 @@ function loadApp(appSettings?: AppSettings) {
                 }
             },
             theme: {
-                defaultTheme: appSettings?.lightMode ? 'light' : 'dark'
+                defaultTheme: appSettings?.lightMode.value ? 'light' : 'dark'
             },
             icons: {
                 defaultSet: 'mdi',
@@ -42,7 +42,7 @@ function loadApp(appSettings?: AppSettings) {
     const app = createApp(App);
 
     // Provide the settings as a global object. If none exist, then create a new one.
-    app.provide('appSettings', appSettings ?? new AppSettings());
+    app.provide('appSettings', appSettings ?? new SettingsManager());
     // Use plugins
     app.use(router);
     app.use(vuetify);
