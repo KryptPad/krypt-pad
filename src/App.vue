@@ -242,7 +242,7 @@ function passphraseDialogClosed(passphrase: string) {
 
 }
 
-let countdownId: NodeJS.Timer | undefined;
+let countdownId: NodeJS.Timeout | undefined;
 
 /**
  * Clears the idle timeout
