@@ -203,7 +203,7 @@ const menuItems = computed(() => {
         { divider: true },
         { title: 'Save File As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened.value },
         { divider: true },
-        { title: 'Exit', handler: kpAPI.ipcBridge.close }
+        { title: 'Exit', handler: () => {kpAPI.ipcBridge.close();} }
       ]
     },
     // {

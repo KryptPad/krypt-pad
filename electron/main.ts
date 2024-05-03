@@ -215,8 +215,7 @@ app.whenReady().then(async () => {
 
   // Listens to the read-file message and opens the file. The file is read and the contents
   // are sent to the renderer process.
-  ipcMain.handle('read-file', async (_, fileName, passphrase) => {
-
+  ipcMain.handle('read-file', async (_, fileName: string, passphrase: string) => {
     const ipcData: IPCData<string> = {};
 
     try {
@@ -238,7 +237,7 @@ app.whenReady().then(async () => {
   });
 
   // Listen to the message to write the contents to the file 
-  ipcMain.handle('write-file', async (_, fileName, plainText, passphrase) => {
+  ipcMain.handle('write-file', async (_, fileName: string, plainText: string, passphrase: string) => {
 
     const ipcData: IPCData<string> = {};
 

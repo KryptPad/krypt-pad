@@ -1,26 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-// --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', withPrototype(ipcRenderer))
-
-// `exposeInMainWorld` can't detect attributes and methods of `prototype`, manually patching it.
-function withPrototype(obj: Record<string, any>) {
-  const protos = Object.getPrototypeOf(obj)
-
-  for (const [key, value] of Object.entries(protos)) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) continue
-
-    if (typeof value === 'function') {
-      // Some native APIs, like `NodeJS.EventEmitter['on']`, don't work in the Renderer process. Wrapping them into a function.
-      obj[key] = function (...args: any) {
-        return value.call(obj, ...args)
-      }
-    } else {
-      obj[key] = value
-    }
+// Expose some render function to our app
+const api = {
+  invoke(channel: string, ...args: any[]): Promise<any> {
+    return ipcRenderer.invoke(channel, ...args);
+  },
+  send(channel: string, ...args: any[]) {
+    ipcRenderer.send(channel, ...args);
+  },
+  on(channel: string, listener: (event: Electron.IpcRendererEvent, ...args: any[]) => void): Electron.IpcRenderer {
+    return ipcRenderer.on(channel, listener);
   }
-  return obj
-}
+};
 
+// --------- Expose some API to the Renderer process ---------
+contextBridge.exposeInMainWorld('ipcRenderer', api);
 
 console.info("Successfully loaded the IPC renderer.")
