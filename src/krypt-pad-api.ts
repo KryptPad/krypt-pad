@@ -20,15 +20,20 @@ class KryptPadAPI {
     saving = ref(false);
     ipcBridge = new IPCBridge();
 
-    // Callback for requiring passphrase
+    /**
+     * Callback to prompt for passphrase
+     */
     private _requirePassphraseCallback: Function | null = null;
+
+    /**
+     * Callback to reset the timeout
+     */
+    private _resetTimeoutCallback: Function | null = null;
 
     /**
      *
      */
     constructor() {
-
-
     }
 
     /**
@@ -37,6 +42,14 @@ class KryptPadAPI {
      */
     onRequirePassphrase(callback: Function) {
         this._requirePassphraseCallback = callback;
+    }
+
+    /**
+     * Registers a callback that will reset the timeout
+     * @param {Function} callback 
+     */
+    onResetTimeout(callback: Function) {
+        this._resetTimeoutCallback = callback;
     }
 
     /**
@@ -200,7 +213,7 @@ class KryptPadAPI {
                 // Write a file containig the encrypted data
                 await this.ipcBridge.writeFile(this.fileName.value, plainText, this.passphrase.value);
                 console.info("Changes written to file.");
-                
+
             }
             catch (ex) {
                 const err = getExceptionMessage(ex);
@@ -243,6 +256,8 @@ class KryptPadAPI {
      */
     private watchProfile(profile: Profile) {
         watch(profile, async () => {
+            // Keep the user session alive
+            this._resetTimeoutCallback?.();
             // Commit the profile
             this.saving.value = true;
             await this.commitProfileAsync();

@@ -116,8 +116,8 @@
       Your session is about to expire.
 
       <template v-slot:actions>
-        <v-btn color="red" @click="timeoutAlert = false">
-          Close
+        <v-btn color="white" @click="resetIdleTimeout">
+          I NEED MORE TIME
         </v-btn>
       </template>
     </v-snackbar>
@@ -236,6 +236,11 @@ kpAPI.onRequirePassphrase((isNew: boolean) => {
   });
 });
 
+// Create callback handler for when the timeout has been reset
+kpAPI.onResetTimeout(() => {
+  resetIdleTimeout();
+});
+
 // Events
 function passphraseDialogClosed(passphrase: string) {
   passphraseResolver(passphrase);
@@ -248,8 +253,10 @@ let countdownId: NodeJS.Timeout | undefined;
  * Clears the idle timeout
  */
 function clearIdleTimeout() {
+  // Reset the time remaining
+  secondsRemaining.value = undefined;
   // If there is a timeout id, clear it
-  if (countdownId !== undefined) {
+  if (countdownId) {
     clearInterval(countdownId);
   }
 
@@ -265,7 +272,7 @@ function resetIdleTimeout() {
   clearIdleTimeout();
 
   // Check if the timeout should begin
-  if (kpAPI.profile && appSettings.enableTimeout && appSettings.timeoutInSeconds.value) {
+  if (kpAPI.profile.value && appSettings.enableTimeout.value && appSettings.timeoutInSeconds.value) {
     // Get the new timeout value
     secondsRemaining.value = appSettings.timeoutInSeconds.value;
 
@@ -275,8 +282,8 @@ function resetIdleTimeout() {
       if (tempSecondsRemaining) {
         tempSecondsRemaining--;
 
-        // When there is 15 seconds left, alert the user
-        if (tempSecondsRemaining <= 15 && !timeoutAlert.value) {
+        // When there is not much time left, alert the user
+        if (tempSecondsRemaining <= 60 && !timeoutAlert.value) {
           timeoutAlert.value = true;
         }
 
@@ -312,6 +319,12 @@ watch(kpAPI.profile, (newProfileValue) => {
 
 // Watch when the timeout value has changed
 watch(appSettings.timeoutInSeconds, () => {
+  // Reset the timeout
+  resetIdleTimeout();
+});
+
+// Watch when the timeout value has changed
+watch(appSettings.enableTimeout, () => {
   // Reset the timeout
   resetIdleTimeout();
 });
