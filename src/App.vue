@@ -46,6 +46,11 @@
 
         <template v-slot:info>
           {{ windowInfo }}
+          <!-- Timer display -->
+          <template v-if="secondsRemaining">
+            &nbsp;-&nbsp;{{ formattedTimeRemaining }}
+          </template>
+
         </template>
       </title-bar>
     </v-sheet>
@@ -77,13 +82,9 @@
             </template>
           </v-tooltip>
 
-          <!-- Timer display -->
+          <!-- Bottom icons -->
           <div class="mt-auto">
-            <v-list-item class="text-center">
-              {{ secondsRemaining }}
-            </v-list-item>
-
-            <!-- Bottom icons -->
+            <!-- Settings -->
             <v-tooltip text="Settings">
               <template v-slot:activator="{ props }">
                 <v-list-item v-bind="props" prepend-icon="mdi-cog" title="Settings" value="settings"
@@ -203,7 +204,7 @@ const menuItems = computed(() => {
         { divider: true },
         { title: 'Save File As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened.value },
         { divider: true },
-        { title: 'Exit', handler: () => {kpAPI.ipcBridge.close();} }
+        { title: 'Exit', handler: () => { kpAPI.ipcBridge.close(); } }
       ]
     },
     // {
@@ -218,6 +219,13 @@ const menuItems = computed(() => {
 const homeRoute = computed(() => {
   return { name: kpAPI.profile.value ? 'home' : 'start' };
 })
+
+// format seconds remaining as 00:00
+const formattedTimeRemaining = computed(() => {
+  const minutes = Math.floor(secondsRemaining.value! / 60);
+  const seconds = secondsRemaining.value! % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+});
 
 let passphraseResolver: Function;
 
