@@ -1,7 +1,7 @@
 interface IAlertOptions {
-    icon?: string,
-    color?: string,
+    icon?: string
+    color?: string
     title?: string
 }
 
-export type { IAlertOptions };
+export type { IAlertOptions }

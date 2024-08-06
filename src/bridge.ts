@@ -1,48 +1,42 @@
-import { KryptPadError } from "../common/error-utils";
-import { IPCData } from "../electron/ipc";
-import { SettingsManager } from "./app-settings";
+import { KryptPadError } from '../common/error-utils'
+import { IPCData } from '../electron/ipc'
+import { SettingsManager } from './app-settings'
 
 /**
  * New experimental bridge using ipcRenderer directly
  */
 class IPCBridge {
+    ipcRenderer = window.ipcRenderer
 
-    ipcRenderer = window.ipcRenderer;
-
-    constructor() {
-
-    }
+    constructor() {}
 
     /**
-     * 
+     *
      * @param fileName Name of the file to open and decrypt
      * @param passphrase The decryption passphrase
      * @returns A string containing the decrypted data
      */
     async readFile(fileName: string, passphrase: string): Promise<string | undefined> {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('read-file', fileName, passphrase);
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('read-file', fileName, passphrase)
         if (response.error) {
             // Throw the error
-            throw KryptPadError.fromError(response.error);
-
+            throw KryptPadError.fromError(response.error)
         }
 
-        return response.data;
-
+        return response.data
     }
 
     /**
      * Encrypts and saves the profile to a file
-     * @param {string} fileName 
-     * @param {*} plainText 
-     * @returns 
+     * @param {string} fileName
+     * @param {*} plainText
+     * @returns
      */
     async writeFile(fileName: string, plainText: any, passphrase: string): Promise<void> {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('write-file', fileName, plainText, passphrase);
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('write-file', fileName, plainText, passphrase)
         if (response.error) {
             // Throw the error
-            throw KryptPadError.fromError(response.error);
-
+            throw KryptPadError.fromError(response.error)
         }
     }
 
@@ -51,15 +45,13 @@ class IPCBridge {
      * @param config An AppSettings object to save
      */
     async saveConfigFile(config: SettingsManager) {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('save-config', config.toString());
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('save-config', config.toString())
         if (response.error) {
             // Throw the error
-            throw KryptPadError.fromError(response.error);
-
+            throw KryptPadError.fromError(response.error)
         }
 
-        console.info("Configuration file written successfully.");
-
+        console.info('Configuration file written successfully.')
     }
 
     /**
@@ -67,19 +59,17 @@ class IPCBridge {
      * @returns the user's application settings
      */
     async loadConfigFile(): Promise<SettingsManager | undefined> {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('load-config');
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('load-config')
         if (response.error) {
             // Throw the error
-            throw KryptPadError.fromError(response.error);
-
+            throw KryptPadError.fromError(response.error)
         } else if (response.data) {
             // Serialize the AppSettings and return it
-            const appSettings = new SettingsManager(JSON.parse(response.data));
-            return appSettings;
-
+            const appSettings = new SettingsManager(JSON.parse(response.data))
+            return appSettings
         }
 
-        return undefined;
+        return undefined
     }
 
     /**
@@ -88,8 +78,7 @@ class IPCBridge {
      */
     async showOpenFileDialogAsync(): Promise<Electron.OpenDialogReturnValue> {
         // Send message to main process to open the dialog.
-        return <Electron.OpenDialogReturnValue>await this.ipcRenderer.invoke('show-open-file-dialog');
-
+        return <Electron.OpenDialogReturnValue>await this.ipcRenderer.invoke('show-open-file-dialog')
     }
 
     /**
@@ -98,8 +87,7 @@ class IPCBridge {
      */
     async showSaveFileDialogAsync(): Promise<Electron.SaveDialogReturnValue> {
         // Send message to main process to open the dialog.
-        return <Electron.SaveDialogReturnValue>await this.ipcRenderer.invoke('show-save-file-dialog');
-
+        return <Electron.SaveDialogReturnValue>await this.ipcRenderer.invoke('show-save-file-dialog')
     }
 
     /**
@@ -107,29 +95,29 @@ class IPCBridge {
      * @returns Promise<any>
      */
     async getIsMaximized() {
-        return await this.ipcRenderer.invoke("is-maximized");
+        return await this.ipcRenderer.invoke('is-maximized')
     }
 
     /**
      * Toggles the window maximize and restore
      */
     toggleMaximizeRestore() {
-        this.ipcRenderer.send('toggle-maximize-restore');
+        this.ipcRenderer.send('toggle-maximize-restore')
     }
 
     /**
      * Minimizes the window
      */
     minimize() {
-        this.ipcRenderer.send('minimize');
+        this.ipcRenderer.send('minimize')
     }
 
     /**
      * Closes the app
      */
     close() {
-        this.ipcRenderer.send('close');
+        this.ipcRenderer.send('close')
     }
 }
 
-export { IPCBridge };
+export { IPCBridge }

@@ -1,28 +1,26 @@
-import { ref } from 'vue';
+import { ref } from 'vue'
 
 /**
  * Settings state
  */
 interface IAppSettings {
-    lightMode: boolean;
-    enableTimeout: boolean;
-    timeoutInSeconds?: number;
-
+    lightMode: boolean
+    enableTimeout: boolean
+    timeoutInSeconds?: number
 }
 
 /**
  * Manages the settings state throughout the app
  */
 class SettingsManager {
-    lightMode = ref<boolean>(false);
-    enableTimeout = ref<boolean>(false);
-    timeoutInSeconds = ref<number | undefined>();
+    lightMode = ref<boolean>(false)
+    enableTimeout = ref<boolean>(false)
+    timeoutInSeconds = ref<number | undefined>()
 
     constructor(data?: IAppSettings) {
-
-        this.lightMode.value = data?.lightMode ?? false;
-        this.enableTimeout.value = data?.enableTimeout ?? false;
-        this.timeoutInSeconds.value = data?.timeoutInSeconds;
+        this.lightMode.value = data?.lightMode ?? false
+        this.enableTimeout.value = data?.enableTimeout ?? false
+        this.timeoutInSeconds.value = data?.timeoutInSeconds
     }
 
     /**
@@ -30,16 +28,14 @@ class SettingsManager {
      * @returns A serialized string of app settings
      */
     public toString = (): string => {
-
         const data: IAppSettings = {
             lightMode: this.lightMode.value,
             enableTimeout: this.enableTimeout.value,
             timeoutInSeconds: this.timeoutInSeconds.value
         }
 
-        return JSON.stringify(data);
+        return JSON.stringify(data)
     }
-
 }
 
-export { SettingsManager, type IAppSettings };
+export { SettingsManager, type IAppSettings }

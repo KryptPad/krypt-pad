@@ -1,8 +1,13 @@
 <template>
     <!-- When in normal mode, the field's value can be edited -->
     <div v-if="!isEditing" class="d-flex" @keypress.enter="saveField">
-        <v-text-field :model-value="internalField.value" @change="onValueChange" :label="internalField.name"
-            :hide-details="true" class="mr-3"></v-text-field>
+        <v-text-field
+            :model-value="internalField.value"
+            @change="onValueChange"
+            :label="internalField.name"
+            :hide-details="true"
+            class="mr-3"
+        ></v-text-field>
 
         <v-menu>
             <template v-slot:activator="{ props }">
@@ -23,47 +28,42 @@
 
     <!-- In edit mode, the field's name can be edited -->
     <template v-else>
-        <v-text-field v-model="internalField.name" label="name" placeholder="e.g. password" @keypress.enter="saveField"
-            autofocus></v-text-field>
+        <v-text-field v-model="internalField.name" label="name" placeholder="e.g. password" @keypress.enter="saveField" autofocus></v-text-field>
         <v-btn color="primary" icon="mdi-check" class="mr-3" @click="saveField"></v-btn>
         <v-btn icon="mdi-close" @click="isEditing = false"></v-btn>
     </template>
 </template>
 
 <script setup lang="ts">
-
-import { Field } from '@/krypt-pad-profile';
-import { ref, toRefs } from 'vue';
+import { Field } from '@/krypt-pad-profile'
+import { ref, toRefs } from 'vue'
 
 const props = defineProps({
     modelValue: { type: Field, required: true }
-});
+})
 
-const emit = defineEmits(['delete', 'update:modelValue']);
+const emit = defineEmits(['delete', 'update:modelValue'])
 
-const isEditing = ref(false);
-const { modelValue: internalField } = toRefs(props);
+const isEditing = ref(false)
+const { modelValue: internalField } = toRefs(props)
 
 // Event handler
 function saveField() {
-    emit('update:modelValue', internalField.value);
+    emit('update:modelValue', internalField.value)
 
-    isEditing.value = false;
+    isEditing.value = false
 }
 
 function onValueChange(ev: Event) {
     // Get element value
-    const element = ev.target as HTMLInputElement;
+    const element = ev.target as HTMLInputElement
     // Update field value
-    internalField.value.value = element.value;
+    internalField.value.value = element.value
     // Update v-model
-    emit('update:modelValue', internalField.value);
-
+    emit('update:modelValue', internalField.value)
 }
 
 function deleteField() {
-    emit('delete', internalField.value);
-
+    emit('delete', internalField.value)
 }
-
 </script>
