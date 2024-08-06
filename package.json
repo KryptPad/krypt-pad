@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && electron-builder",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "prettier --write src/"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -22,11 +23,12 @@
     "vuetify": "^3.6.12"
   },
   "devDependencies": {
-    "electron": "^31.1.0",
-    "electron-builder": "^24.13.3",
     "@types/qrcode": "^1.5.5",
     "@vitejs/plugin-vue": "^5.0.5",
+    "electron": "^31.1.0",
+    "electron-builder": "^24.13.3",
     "events-browserify": "^0.0.1",
+    "prettier": "^3.3.3",
     "sass": "^1.76.0",
     "sass-loader": "^14.2.1",
     "typescript": "^5.4.5",

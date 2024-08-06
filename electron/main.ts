@@ -213,6 +213,47 @@ app.whenReady().then(async () => {
 
   });
 
+  // Handle message to encrypt data
+  ipcMain.handle('encrypt', async (_, plainText: string, passphrase: string) => {
+
+    const ipcData: IPCData<Buffer> = {};
+
+    try {
+      // Encrypt the data
+      ipcData.data = await encryptAsync(plainText, passphrase);
+    }
+    catch (ex) {
+      ipcData.error = KryptPadError.fromError(ex);
+
+      console.error(ipcData.error);
+
+    }
+
+    return ipcData
+
+  });
+
+  // Handle message to decrypt data
+  ipcMain.handle('decrypt', async (_, encryptedData: Buffer, passphrase: string) => {
+
+    const ipcData: IPCData<string> = {};
+
+    try {
+      // Decrypt the data
+      ipcData.data = await decryptAsync(encryptedData, passphrase);
+
+    }
+    catch (ex) {
+      ipcData.error = KryptPadError.fromError(ex);
+
+      console.error(ipcData.error);
+
+    }
+
+    return ipcData;
+
+  });
+
   // Listens to the read-file message and opens the file. The file is read and the contents
   // are sent to the renderer process.
   ipcMain.handle('read-file', async (_, fileName: string, passphrase: string) => {
