@@ -41,6 +41,38 @@ class IPCBridge {
     }
 
     /**
+     * Encrypts data using the passphrase
+     * @param data The data to encrypt
+     * @param passphrase Passphrase to use for encryption
+     * @returns A Buffer containing the encrypted data
+     */
+    async encryptData(data: string, passphrase: string): Promise<Buffer | undefined> {
+        const response = <IPCData<Buffer>>await this.ipcRenderer.invoke('encrypt', data, passphrase)
+        if (response.error) {
+            // Throw the error
+            throw KryptPadError.fromError(response.error)
+        }
+
+        return response.data
+    }
+
+    /**
+     * Decrypts data using the passphrase
+     * @param data The data to decrypt
+     * @param passphrase Passphrase to use for decryption
+     * @returns A string containing the decrypted data
+     */
+    async decryptData(data: Buffer, passphrase: string): Promise<string | undefined> {
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('decrypt', data, passphrase)
+        if (response.error) {
+            // Throw the error
+            throw KryptPadError.fromError(response.error)
+        }
+
+        return response.data
+    }
+
+    /**
      * Saves the user's application settings
      * @param config An AppSettings object to save
      */
