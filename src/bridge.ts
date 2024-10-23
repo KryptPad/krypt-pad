@@ -46,12 +46,12 @@ class IPCBridge {
      * @param passphrase Passphrase to use for encryption
      * @returns A Buffer containing the encrypted data
      */
-    async encryptData(data: string, passphrase: string | undefined): Promise<Buffer | undefined> {
+    async encryptData(data: string, passphrase: string | undefined): Promise<string | undefined> {
         if (!passphrase) {
             throw new Error('Passphrase is required to encrypt data.')
         }
 
-        const response = <IPCData<Buffer>>await this.ipcRenderer.invoke('encrypt', data, passphrase)
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('encrypt', data, passphrase)
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error)
@@ -66,7 +66,7 @@ class IPCBridge {
      * @param passphrase Passphrase to use for decryption
      * @returns A string containing the decrypted data
      */
-    async decryptData(data: Buffer, passphrase: string | undefined): Promise<string | undefined> {
+    async decryptData(data: string, passphrase: string | undefined): Promise<string | undefined> {
         if (!passphrase) {
             throw new Error('Passphrase is required to decrypt data.')
         }

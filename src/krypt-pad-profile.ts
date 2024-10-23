@@ -6,15 +6,12 @@ import { IPCBridge } from '@/bridge'
 class Profile {
     categories: Array<Category> = []
     items: Array<Item> = []
-    passphrase: string
 
     /**
      * Creates a new profile with a passphrase
      * @param passphrase The passphrase to encrypt or decrypt the profile with
      */
-    constructor(passphrase: string) {
-        this.passphrase = passphrase
-    }
+    constructor() {}
 
     /**
      * Creates a profile from a json string
@@ -34,31 +31,46 @@ class Profile {
 
         // Parse the json string
         const profileObject = JSON.parse(json)
-        const profile = new Profile(passphrase)
+        const profile = new Profile()
 
         // Create the categories
-        for (const c of profileObject.categories) {
-            const category = await Category.load(c.id, c.title, passphrase)
-            // Add category to profile
-            profile.categories.push(category)
+        if (profileObject.categories) {
+            for (const c of profileObject.categories) {
+                const category = await Category.load(c.id, c.title, passphrase)
+                // Add category to profile
+                profile.categories.push(category)
+            }
         }
 
         // Create the items
-        for (const i of profileObject.items) {
-            const item = new Item(i.id, i.categoryId, i.title)
-            item.notes = i.notes
-            item.starred = i.starred
+        if (profileObject.items) {
+            for (const i of profileObject.items) {
+                const item = new Item(i.id, i.categoryId, i.title)
+                item.notes = i.notes
+                item.starred = i.starred
 
-            // Add fields to the item
-            for (const field of i.fields) {
-                item.fields.push(new Field(field.name, field.value))
+                // Add fields to the item
+                for (const field of i.fields) {
+                    item.fields.push(new Field(field.name, field.value))
+                }
+
+                // Add category to profile
+                profile.items.push(item)
             }
-
-            // Add category to profile
-            profile.items.push(item)
         }
 
         return profile
+    }
+
+    async toJSON(): Promise<string> {
+        // Convert the profile into a data structure then stringify it
+        const data = {
+            categories: this.categories.map((c) => {
+                return { id: c.id, title: c.encryptedTitle }
+            })
+        }
+
+        return JSON.stringify(data)
     }
 }
 
@@ -76,15 +88,15 @@ interface IIdTitle {
 class Category implements IIdTitle {
     id: string
     title: string | undefined
-    encryptedTitle: Buffer | undefined
+    encryptedTitle: string | undefined
 
     /**
      * Creates a new category. If no id is passed, a new one is generated.
      * @param {string} id The id of the category
-     * @param {Buffer} encryptedTitle The encrypted title of the category
+     * @param {string} encryptedTitle The encrypted title of the category
      * @param {string} title The title of the category
      */
-    constructor(id: string | undefined, encryptedTitle: Buffer | undefined, title: string | undefined) {
+    constructor(id: string | undefined, encryptedTitle: string | undefined, title: string | undefined) {
         this.encryptedTitle = encryptedTitle
         this.title = title
         if (!id) {
@@ -94,7 +106,7 @@ class Category implements IIdTitle {
         }
     }
 
-    static async load(id: string | undefined, encryptedTitle: Buffer, passphrase: string | undefined): Promise<Category> {
+    static async load(id: string | undefined, encryptedTitle: string, passphrase: string | undefined): Promise<Category> {
         if (!passphrase) {
             throw new Error('Invalid passphrase')
         }

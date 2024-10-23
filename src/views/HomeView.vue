@@ -37,7 +37,6 @@
                 >
                 </category-list-item>
             </v-list>
-            {{ kpAPI.profile.value?.categories }}
         </v-card>
     </v-navigation-drawer>
 

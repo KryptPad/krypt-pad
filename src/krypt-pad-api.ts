@@ -67,7 +67,7 @@ class KryptPadAPI {
      * @param {string} data The data to encrypt
      * @returns
      */
-    async encryptData(data: string): Promise<Buffer | undefined> {
+    async encryptData(data: string): Promise<string | undefined> {
         if (!this.passphrase.value) {
             throw new Error('Passphrase is required to encrypt data.')
         }
@@ -77,10 +77,10 @@ class KryptPadAPI {
 
     /**
      * Decrypts the data using the passphrase
-     * @param {Buffer} data The data to decrypt
+     * @param {string} data The data to decrypt
      * @returns
      */
-    async decryptData(data: Buffer): Promise<string | undefined> {
+    async decryptData(data: string): Promise<string | undefined> {
         let attempts = 0
         while (attempts < 3) {
             // Prompt for passphrase to decrypt the file
@@ -203,7 +203,7 @@ class KryptPadAPI {
         // Set fileOpen flag
         this.fileOpened.value = true
         // Create new profile object
-        const p = reactive(new Profile(this.passphrase.value))
+        const p = reactive(new Profile())
         if (p) {
             const rp = reactive(p)
             this.profile.value = rp
@@ -257,7 +257,11 @@ class KryptPadAPI {
         // Encrypt the profile. But first, make sure we have a filename and a passphrase
         if (this.fileName.value && this.passphrase.value) {
             try {
-                const plainText = JSON.stringify(this.profile.value)
+                const plainText = await this.profile.value?.toJSON()
+                if (!plainText){
+                    throw new Error('Failed to convert profile to JSON')
+                }
+
                 // Write a file containig the encrypted data
                 await this.ipcBridge.writeFile(this.fileName.value, plainText)
                 console.info('Changes written to file.')

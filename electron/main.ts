@@ -224,7 +224,7 @@ app.whenReady().then(async () => {
 
     // Handle message to encrypt data
     ipcMain.handle('encrypt', async (_, plainText: string, passphrase: string) => {
-        const ipcData: IPCData<Buffer> = {}
+        const ipcData: IPCData<string> = {}
 
         try {
             // Encrypt the data
@@ -239,7 +239,7 @@ app.whenReady().then(async () => {
     })
 
     // Handle message to decrypt data
-    ipcMain.handle('decrypt', async (_, encryptedData: Buffer, passphrase: string) => {
+    ipcMain.handle('decrypt', async (_, encryptedData: string, passphrase: string) => {
         const ipcData: IPCData<string> = {}
 
         try {

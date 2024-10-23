@@ -38,7 +38,7 @@ const generateSecretKey = function (passphrase: crypto.BinaryLike, salt: crypto.
  * @param {crypto.BinaryLike} passphrase 
  * @returns 
  */
-const encryptAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLike): Promise<Buffer> => {
+const encryptAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLike): Promise<string> => {
     // Create a random 32 byte salt
     const salt = crypto.randomBytes(SALT_LENGTH);
     // Generate a derived key from a passphrase, salt, # of iterations
@@ -56,7 +56,7 @@ const encryptAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLi
     // Write to the buffer
     const encrypted = Buffer.concat([salt, iv, contentLength, content, cipher.getAuthTag()]);
 
-    return encrypted;
+    return encrypted.toString('base64');
 };
 
 /**
@@ -65,20 +65,21 @@ const encryptAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLi
  * @param {*} passphrase 
  * @returns 
  */
-const decryptAsync = async (cipherData: Buffer, passphrase: crypto.BinaryLike): Promise<string> => {
+const decryptAsync = async (cipherData: string, passphrase: crypto.BinaryLike): Promise<string> => {
+    const cipherDataBuffer = Buffer.from(cipherData, 'base64');
     // Get some prepended data like salt and iv
-    const salt = Buffer.from(cipherData.subarray(0, SALT_LENGTH));
+    const salt = Buffer.from(cipherDataBuffer.subarray(0, SALT_LENGTH));
     // Generate the secret key from the salt and passphrase
     const secretKey = await generateSecretKey(passphrase, salt);
 
     // Get the IV
-    const iv = Buffer.from(cipherData.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH));
+    const iv = Buffer.from(cipherDataBuffer.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH));
     // Get the rest of the message to decrypt. But first, get the length of the content. This is determined by an
     // 8 bit uint prepended to the content
-    const contentLength = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + 4)).readUInt32LE();
-    const content = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4, SALT_LENGTH + IV_LENGTH + 4 + contentLength));
+    const contentLength = Buffer.from(cipherDataBuffer.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + 4)).readUInt32LE();
+    const content = Buffer.from(cipherDataBuffer.subarray(SALT_LENGTH + IV_LENGTH + 4, SALT_LENGTH + IV_LENGTH + 4 + contentLength));
     // Get the auth tag at the end
-    const authTag = Buffer.from(cipherData.subarray(SALT_LENGTH + IV_LENGTH + 4 + contentLength));
+    const authTag = Buffer.from(cipherDataBuffer.subarray(SALT_LENGTH + IV_LENGTH + 4 + contentLength));
 
     // Create a decipher object for aes 256, the secret key, and the iv.
     const decipher = crypto.createDecipheriv(ALGORITHM, secretKey, iv);
