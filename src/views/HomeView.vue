@@ -37,6 +37,7 @@
                 >
                 </category-list-item>
             </v-list>
+            {{ kpAPI.profile.value?.categories }}
         </v-card>
     </v-navigation-drawer>
 
@@ -87,7 +88,7 @@ const router = useRouter()
 
 // Inject Krypt Pad's core functionality
 const kpAPI = inject<KryptPadAPI>('kpAPI')!
-
+console.log('home')
 // Make sure we have a profile loaded or else redirect to the Start page
 kpAPI.redirectToStartWhenNoProfile()
 
@@ -126,6 +127,7 @@ function categorySelected(category: Category | null, starred?: boolean) {
 }
 
 function addItemAsync() {
+    kpAPI.ipcBridge.encryptData('Untitled', kpAPI.passphrase)
     // Create new item within the selected category
     const item = new Item(null, selectedCategory.value?.id ?? null, null)
     // Add the item to the global items list

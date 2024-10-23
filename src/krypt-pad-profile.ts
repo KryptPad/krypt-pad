@@ -1,31 +1,44 @@
+import { IPCBridge } from '@/bridge'
+
 /**
  * A profile is the top most entity. It contains all the categories the user defines.
  */
 class Profile {
     categories: Array<Category> = []
     items: Array<Item> = []
+    passphrase: string
 
-    constructor() {}
+    /**
+     * Creates a new profile with a passphrase
+     * @param passphrase The passphrase to encrypt or decrypt the profile with
+     */
+    constructor(passphrase: string) {
+        this.passphrase = passphrase
+    }
 
     /**
      * Creates a profile from a json string
      * @param {string} json
      * @returns
      */
-    static from(json: string): Profile | null {
+    static async from(json: string, passphrase: string): Promise<Profile> {
+        // If the json is empty, throw an error
         if (!json) {
-            return null
+            throw new Error('Invalid JSON')
+        }
+
+        // If the passphrase is empty, throw an error
+        if (!passphrase) {
+            throw new Error('Invalid passphrase')
         }
 
         // Parse the json string
         const profileObject = JSON.parse(json)
-
-        // Create the Profile
-        const profile = new Profile()
+        const profile = new Profile(passphrase)
 
         // Create the categories
         for (const c of profileObject.categories) {
-            const category = new Category(c.id, c.title)
+            const category = await Category.load(c.id, c.title, passphrase)
             // Add category to profile
             profile.categories.push(category)
         }
@@ -53,8 +66,8 @@ class Profile {
  * Interface for category
  */
 interface IIdTitle {
-    id: string | null
-    title: string
+    id: string
+    title: string | undefined
 }
 
 /**
@@ -62,19 +75,51 @@ interface IIdTitle {
  */
 class Category implements IIdTitle {
     id: string
-    title: string
+    title: string | undefined
+    encryptedTitle: Buffer | undefined
+
     /**
      * Creates a new category. If no id is passed, a new one is generated.
-     * @param {String} id
-     * @param {String} title
+     * @param {string} id The id of the category
+     * @param {Buffer} encryptedTitle The encrypted title of the category
+     * @param {string} title The title of the category
      */
-    constructor(id: string | null, title: string) {
+    constructor(id: string | undefined, encryptedTitle: Buffer | undefined, title: string | undefined) {
+        this.encryptedTitle = encryptedTitle
         this.title = title
         if (!id) {
             this.id = crypto.randomUUID()
         } else {
             this.id = id
         }
+    }
+
+    static async load(id: string | undefined, encryptedTitle: Buffer, passphrase: string | undefined): Promise<Category> {
+        if (!passphrase) {
+            throw new Error('Invalid passphrase')
+        }
+
+        // Create a new IPCBridge
+        const ipcBridge: IPCBridge = new IPCBridge()
+
+        // Decrypt the title
+        const title = await ipcBridge.decryptData(encryptedTitle, passphrase)
+
+        return new Category(id, encryptedTitle, title)
+    }
+
+    static async create(title: string, passphrase: string | undefined): Promise<Category> {
+        if (!passphrase) {
+            throw new Error('Invalid passphrase')
+        }
+
+        // Create a new IPCBridge
+        const ipcBridge: IPCBridge = new IPCBridge()
+
+        // Encrypt the title
+        const encryptedTitle = await ipcBridge.encryptData(title, passphrase)
+        console.log('creating category')
+        return new Category(undefined, encryptedTitle, title)
     }
 }
 
@@ -83,7 +128,7 @@ class Category implements IIdTitle {
  */
 class Item implements IIdTitle {
     id: string
-    title: string
+    title: string | undefined
     notes: string | null
     starred: boolean
 
@@ -93,17 +138,17 @@ class Item implements IIdTitle {
 
     /**
      * Creates a new item. If no id is passed, a new one is generated.
-     * @param {String} id
-     * @param {String} categoryId
-     * @param {String} title
+     * @param {string} id
+     * @param {string} categoryId
+     * @param {Buffer} title
      */
-    constructor(id: string | null, categoryId: string | null, title: string | null) {
+    constructor(id: string | null, categoryId: string | null, title: string) {
         if (!id) {
             this.id = crypto.randomUUID()
         } else {
             this.id = id
         }
-        this.title = title ?? 'Untitled'
+        this.title = title
         this.notes = null
         this.starred = false
         // Link to a category

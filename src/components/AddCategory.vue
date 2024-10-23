@@ -32,12 +32,12 @@ const rules = [(value: string) => !!value || 'Required.']
 const emit = defineEmits(['closed'])
 
 // Event handlers
-function addCategory() {
+async function addCategory() {
     if (!title.value) {
         return
     }
     // Add the category to the profile
-    kpAPI.profile.value?.categories.push(new Category(null, title.value))
+    kpAPI.profile.value?.categories.push(await Category.create(title.value, kpAPI.passphrase.value))
 
     close()
 }

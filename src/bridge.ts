@@ -11,13 +11,13 @@ class IPCBridge {
     constructor() {}
 
     /**
-     *
+     * Reads the profile data from the file
      * @param fileName Name of the file to open and decrypt
      * @param passphrase The decryption passphrase
      * @returns A string containing the decrypted data
      */
-    async readFile(fileName: string, passphrase: string): Promise<string | undefined> {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('read-file', fileName, passphrase)
+    async readFile(fileName: string): Promise<string | undefined> {
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('read-file', fileName)
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error)
@@ -32,8 +32,8 @@ class IPCBridge {
      * @param {*} plainText
      * @returns
      */
-    async writeFile(fileName: string, plainText: any, passphrase: string): Promise<void> {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('write-file', fileName, plainText, passphrase)
+    async writeFile(fileName: string, profileData: string): Promise<void> {
+        const response = <IPCData<string>>await this.ipcRenderer.invoke('write-file', fileName, profileData)
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error)
@@ -46,7 +46,11 @@ class IPCBridge {
      * @param passphrase Passphrase to use for encryption
      * @returns A Buffer containing the encrypted data
      */
-    async encryptData(data: string, passphrase: string): Promise<Buffer | undefined> {
+    async encryptData(data: string, passphrase: string | undefined): Promise<Buffer | undefined> {
+        if (!passphrase) {
+            throw new Error('Passphrase is required to encrypt data.')
+        }
+
         const response = <IPCData<Buffer>>await this.ipcRenderer.invoke('encrypt', data, passphrase)
         if (response.error) {
             // Throw the error
@@ -62,7 +66,11 @@ class IPCBridge {
      * @param passphrase Passphrase to use for decryption
      * @returns A string containing the decrypted data
      */
-    async decryptData(data: Buffer, passphrase: string): Promise<string | undefined> {
+    async decryptData(data: Buffer, passphrase: string | undefined): Promise<string | undefined> {
+        if (!passphrase) {
+            throw new Error('Passphrase is required to decrypt data.')
+        }
+
         const response = <IPCData<string>>await this.ipcRenderer.invoke('decrypt', data, passphrase)
         if (response.error) {
             // Throw the error
