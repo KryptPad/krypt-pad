@@ -63,7 +63,7 @@
                 <v-card-title class="d-flex">
                     <span class="mr-3 text-truncate">{{ item.title }}</span>
 
-                    <v-chip class="ml-auto" color="info" v-if="item.categoryId">{{ getCategory(item)?.title }}</v-chip>
+                    <v-chip class="ml-auto" color="info" v-if="item.categoryId">{{ getCategory(item)?.name }}</v-chip>
                 </v-card-title>
 
                 <v-card-actions>
@@ -109,7 +109,14 @@ const filteredItems = computed(() => {
     )
 })
 
+/**
+ * Adds a new category to the profile
+ * @param title The title for the new category
+ */
 async function addCategory(title: string) {
+    if (!kpAPI.passphrase.value) {
+        return
+    }
     kpAPI.profile.value?.categories.push(await Category.create(title, kpAPI.passphrase.value))
 }
 
@@ -123,7 +130,6 @@ function getCategory(item: Item) {
     return category
 }
 
-// Event handlers
 function categorySelected(category: Category | null, starred?: boolean) {
     selectedCategory.value = category
     allStarred.value = starred ?? false

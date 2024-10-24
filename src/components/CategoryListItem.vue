@@ -1,7 +1,7 @@
 <template>
     <!-- Category list item -->
     <v-list-item v-if="!isEditing" @click="emit('click', $event)" :active="active">
-        <v-list-item-title>{{ category?.title }}</v-list-item-title>
+        <v-list-item-title>{{ category?.name }}</v-list-item-title>
 
         <template v-slot:append>
             <v-menu>
@@ -58,7 +58,7 @@ const emit = defineEmits(['click'])
  */
 function enterEditMode() {
     // Set the title field to the category's title so we can rename it.
-    title.value = props.category?.title
+    title.value = props.category?.name
     isEditing.value = true
 }
 
@@ -70,7 +70,7 @@ async function renameCategory() {
         return
     }
     // When change is fired, update the category title to trigger updating the profile.
-    await props.category.setTitle(title.value, kpAPI.passphrase.value)
+    await props.category.setName(title.value, kpAPI.passphrase.value)
     close()
 }
 

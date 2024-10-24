@@ -66,7 +66,7 @@ class Profile {
         // Convert the profile into a data structure then stringify it
         const data = {
             categories: this.categories.map((c) => {
-                return { id: c.id, title: c.encryptedTitle }
+                return { id: c.id, title: c.encryptedName }
             })
         }
 
@@ -75,93 +75,109 @@ class Profile {
 }
 
 /**
- * Interface for category
+ * Interface for objects with id and title
  */
-interface IIdTitle {
+interface IProfileEntity {
     id: string | undefined
-
+    _name: string | undefined
+    get name(): string | undefined
+    setName(name: string, passphrase: string | undefined): Promise<void>
 }
 
-/**
- * Category for organizing items.
- */
-class Category {
+class ProfileEntity implements IProfileEntity {
     id: string
-    _title: string | undefined
-    encryptedTitle: string | undefined
+    _name: string | undefined
+    encryptedName: string | undefined
 
-    get title(): string | undefined {
-        return this._title
+    get name(): string | undefined {
+        return this._name
     }
 
     /**
-     * Creates a new category. If no id is passed, a new one is generated.
-     * @param {string} id The id of the category
-     * @param {string} encryptedTitle The encrypted title of the category
-     * @param {string} title The title of the category
+     * Creates a new entity. If no id is passed, a new one is generated.
+     * @param {string} id The id of the entity
+     * @param {string} encryptedName The encrypted name of the entity
+     * @param {string} name The name of the category
      */
-    constructor(id: string | undefined, encryptedTitle: string | undefined, title: string | undefined) {
-        this.encryptedTitle = encryptedTitle
-        this._title = title
-   
+    constructor(id: string | undefined) {
         if (!id) {
             this.id = crypto.randomUUID()
         } else {
             this.id = id
         }
-
-    
     }
 
-    async setTitle(title: string, passphrase: string | undefined) {
+    /**
+     * Sets the name of the category
+     * @param name The name of the category
+     * @param passphrase The passphrase to encrypt the name with
+     */
+    async setName(name: string, passphrase: string | undefined) {
         // Create a new IPCBridge
         const ipcBridge: IPCBridge = new IPCBridge()
-        // Encrypt the title
-        this.encryptedTitle = await ipcBridge.encryptData(title, passphrase)
-        this._title = title;
+        // Encrypt the name
+        this.encryptedName = await ipcBridge.encryptData(name, passphrase)
+        this._name = name
+    }
+}
+
+/**
+ * Category for organizing items.
+ */
+class Category extends ProfileEntity {
+    // Constructor that calls the super constructor
+    constructor(id: string | undefined, encryptedName: string | undefined, name: string | undefined) {
+        super(id)
+        this.encryptedName = encryptedName
+        this._name = name
     }
 
-    static async load(id: string | undefined, encryptedTitle: string, passphrase: string | undefined): Promise<Category> {
-        if (!passphrase) {
-            throw new Error('Invalid passphrase')
-        }
-
+    /**
+     * Loads a category from a json object
+     * @param id The id of the category
+     * @param encryptedTitle The encrypted title of the category
+     * @param passphrase The passphrase to decrypt the title with
+     * @returns A new category
+     */
+    static async load(id: string, encryptedName: string, passphrase: string): Promise<Category> {
         // Create a new IPCBridge
         const ipcBridge: IPCBridge = new IPCBridge()
+        const name = await ipcBridge.decryptData(encryptedName, passphrase)
 
-        // Decrypt the title
-        const title = await ipcBridge.decryptData(encryptedTitle, passphrase)
-
-        return new Category(id, encryptedTitle, title)
+        return new Category(id, encryptedName, name)
     }
 
-    static async create(title: string, passphrase: string | undefined): Promise<Category> {
-        if (!passphrase) {
-            throw new Error('Invalid passphrase')
-        }
-
+    /**
+     *
+     * @param title
+     * @param passphrase
+     * @returns
+     */
+    static async create(title: string, passphrase: string): Promise<Category> {
         // Create a new IPCBridge
         const ipcBridge: IPCBridge = new IPCBridge()
-
-        // Encrypt the title
         const encryptedTitle = await ipcBridge.encryptData(title, passphrase)
-        console.log('creating category')
-        return new Category(undefined, encryptedTitle, title)
+        const newCategory = new Category(undefined, encryptedTitle, title)
+        newCategory.setName(title, passphrase)
+        return newCategory
     }
 }
 
 /**
  * Wrapper for user defined data to encrypt. Contains fields and notes
  */
-class Item implements IIdTitle {
+class Item implements IProfileEntity {
     id: string
-    title: string | undefined
+    encryptedTitle: string | undefined
     notes: string | null
     starred: boolean
-
     categoryId: string | null
-
     fields: Array<Field> = []
+
+    _title: string | undefined
+    get title(): string | undefined {
+        return this._title
+    }
 
     /**
      * Creates a new item. If no id is passed, a new one is generated.
@@ -175,11 +191,24 @@ class Item implements IIdTitle {
         } else {
             this.id = id
         }
-        this.title = title
+        this._title = title
         this.notes = null
         this.starred = false
         // Link to a category
         this.categoryId = categoryId
+    }
+
+    /**
+     * Sets the title of the category
+     * @param title The title of the category
+     * @param passphrase The passphrase to encrypt the title with
+     */
+    async setTitle(title: string, passphrase: string | undefined) {
+        // Create a new IPCBridge
+        const ipcBridge: IPCBridge = new IPCBridge()
+        // Encrypt the title
+        this.encryptedTitle = await ipcBridge.encryptData(title, passphrase)
+        this._title = title
     }
 }
 
@@ -202,4 +231,4 @@ class Field {
 }
 
 export { Profile, Category, Item, Field }
-export type { IIdTitle }
+export type { IProfileEntity as IIdTitle }
