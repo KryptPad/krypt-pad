@@ -95,7 +95,7 @@ const item = kpAPI.profile.value?.items.find((item: Item) => item.id === props.i
 const categories = computed(() => {
     // Create a default selection from the interface
     const defaultSelection: IIdTitle = {
-        id: null,
+        id: undefined,
         title: 'None'
     }
 

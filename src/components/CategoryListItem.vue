@@ -65,12 +65,12 @@ function enterEditMode() {
 /**
  * Renames the category
  */
-function renameCategory() {
+async function renameCategory() {
     if (!title.value) {
         return
     }
     // When change is fired, update the category title to trigger updating the profile.
-    props.category.title = title.value
+    await props.category.setTitle(title.value, kpAPI.passphrase.value)
     close()
 }
 

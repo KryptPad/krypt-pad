@@ -7,37 +7,37 @@
             :rules="rules"
             hide-details="auto"
             class="mb-3"
-            @keypress.enter="addCategory"
+            @keypress.enter="save"
             @keydown.esc="close"
             autofocus
         >
         </v-text-field>
 
-        <v-btn color="primary" icon="mdi-check" class="mr-3" @click="addCategory"></v-btn>
+        <v-btn color="primary" icon="mdi-check" class="mr-3" @click="save"></v-btn>
         <v-btn icon="mdi-close" @click="close"></v-btn>
     </div>
 </template>
 
 <script setup lang="ts">
-import KryptPadAPI from '@/krypt-pad-api'
-import { Category } from '@/krypt-pad-profile'
-import { inject, ref } from 'vue'
+import { ref } from 'vue'
 
-// Inject Krypt Pad's core functionality
-const kpAPI = inject<KryptPadAPI>('kpAPI')!
+const props = defineProps({
+  target: Object
+})
 
 const title = ref<string | null>(null)
 const rules = [(value: string) => !!value || 'Required.']
 
-const emit = defineEmits(['closed'])
+const emit = defineEmits(['closed', 'save'])
 
 // Event handlers
-async function addCategory() {
+async function save() {
     if (!title.value) {
         return
     }
-    // Add the category to the profile
-    kpAPI.profile.value?.categories.push(await Category.create(title.value, kpAPI.passphrase.value))
+    console.log('save', title.value, props.target)
+    // Raise the save event
+    emit('save', title.value, props.target)
 
     close()
 }

@@ -78,17 +78,21 @@ class Profile {
  * Interface for category
  */
 interface IIdTitle {
-    id: string
-    title: string | undefined
+    id: string | undefined
+
 }
 
 /**
  * Category for organizing items.
  */
-class Category implements IIdTitle {
+class Category {
     id: string
-    title: string | undefined
+    _title: string | undefined
     encryptedTitle: string | undefined
+
+    get title(): string | undefined {
+        return this._title
+    }
 
     /**
      * Creates a new category. If no id is passed, a new one is generated.
@@ -98,12 +102,23 @@ class Category implements IIdTitle {
      */
     constructor(id: string | undefined, encryptedTitle: string | undefined, title: string | undefined) {
         this.encryptedTitle = encryptedTitle
-        this.title = title
+        this._title = title
+   
         if (!id) {
             this.id = crypto.randomUUID()
         } else {
             this.id = id
         }
+
+    
+    }
+
+    async setTitle(title: string, passphrase: string | undefined) {
+        // Create a new IPCBridge
+        const ipcBridge: IPCBridge = new IPCBridge()
+        // Encrypt the title
+        this.encryptedTitle = await ipcBridge.encryptData(title, passphrase)
+        this._title = title;
     }
 
     static async load(id: string | undefined, encryptedTitle: string, passphrase: string | undefined): Promise<Category> {

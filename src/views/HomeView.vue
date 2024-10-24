@@ -10,7 +10,7 @@
 
             <v-list-item v-else>
                 <!-- Component to add categories to the list -->
-                <add-category @closed="isAdding = false"></add-category>
+                <value-text-field @closed="isAdding = false" @save="addCategory"></value-text-field>
             </v-list-item>
         </v-list>
 
@@ -76,7 +76,7 @@
 
 <script setup lang="ts">
 import { inject, ref } from 'vue'
-import AddCategory from '@/components/AddCategory.vue'
+import ValueTextField from '@/components/ValueTextField.vue'
 import CategoryListItem from '@/components/CategoryListItem.vue'
 import { useRouter } from 'vue-router'
 import { computed } from 'vue'
@@ -87,7 +87,7 @@ const router = useRouter()
 
 // Inject Krypt Pad's core functionality
 const kpAPI = inject<KryptPadAPI>('kpAPI')!
-console.log('home')
+
 // Make sure we have a profile loaded or else redirect to the Start page
 kpAPI.redirectToStartWhenNoProfile()
 
@@ -105,9 +105,13 @@ const filteredItems = computed(() => {
                 (allStarred.value === item.starred && !selectedCategory.value) ||
                 (selectedCategory.value && item.categoryId === selectedCategory.value.id)) &&
             // Filter search text
-            (!searchText.value || item.title.toLowerCase().includes(searchText.value?.toLowerCase()))
+            (!searchText.value || item.title?.toLowerCase().includes(searchText.value?.toLowerCase()))
     )
 })
+
+async function addCategory(title: string) {
+    kpAPI.profile.value?.categories.push(await Category.create(title, kpAPI.passphrase.value))
+}
 
 /**
  * Gets the category for an item
@@ -126,7 +130,7 @@ function categorySelected(category: Category | null, starred?: boolean) {
 }
 
 function addItemAsync() {
-    kpAPI.ipcBridge.encryptData('Untitled', kpAPI.passphrase)
+    kpAPI.ipcBridge.encryptData('Untitled', kpAPI.passphrase.value)
     // Create new item within the selected category
     const item = new Item(null, selectedCategory.value?.id ?? null, null)
     // Add the item to the global items list
