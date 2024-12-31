@@ -46,7 +46,11 @@ class IPCBridge {
      * @param passphrase Passphrase to use for encryption
      * @returns A Buffer containing the encrypted data
      */
-    async encryptData(data: string, passphrase: string | undefined): Promise<string | undefined> {
+    async encryptData(data: string | undefined, passphrase: string | undefined): Promise<string | undefined> {
+        if (!data) {
+            return undefined
+        }
+
         if (!passphrase) {
             throw new Error('Passphrase is required to encrypt data.')
         }
@@ -66,7 +70,11 @@ class IPCBridge {
      * @param passphrase Passphrase to use for decryption
      * @returns A string containing the decrypted data
      */
-    async decryptData(data: string, passphrase: string | undefined): Promise<string | undefined> {
+    async decryptData(data: string | undefined, passphrase: string | undefined): Promise<string | undefined> {
+        if (!data) {
+            return undefined
+        }
+
         if (!passphrase) {
             throw new Error('Passphrase is required to decrypt data.')
         }

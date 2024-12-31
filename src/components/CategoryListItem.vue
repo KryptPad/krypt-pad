@@ -1,7 +1,7 @@
 <template>
     <!-- Category list item -->
     <v-list-item v-if="!isEditing" @click="emit('click', $event)" :active="active">
-        <v-list-item-title>{{ category?.name }}</v-list-item-title>
+        <v-list-item-title>{{ name }}</v-list-item-title>
 
         <template v-slot:append>
             <v-menu>
@@ -14,7 +14,7 @@
                         <v-list-item-title>Rename</v-list-item-title>
                     </v-list-item>
 
-                    <v-list-item prepend-icon="mdi-delete" value="delete" @click="kpAPI.deleteCategory(category)">
+                    <v-list-item prepend-icon="mdi-delete" value="delete" @click="emit('deleted', $event)">
                         <v-list-item-title>Delete</v-list-item-title>
                     </v-list-item>
                 </v-list>
@@ -34,43 +34,39 @@
 </template>
 
 <script setup lang="ts">
-import KryptPadAPI from '@/krypt-pad-api'
-import { Category } from '@/krypt-pad-profile'
-import { inject, ref } from 'vue'
+import { ref } from 'vue'
 
-const props = defineProps({
+const props = defineProps<{
     // A reference to the category
-    category: { type: Category, required: true },
-    active: { type: Boolean }
-})
-
-// Inject Krypt Pad's core functionality
-const kpAPI = inject<KryptPadAPI>('kpAPI')!
+    id?: String
+    name?: String
+    active: boolean
+}>()
 
 const isEditing = ref(false)
 const title = ref()
 const rules = [(value: string | null) => !!value || 'Required.']
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click', 'updated', 'deleted'])
 
 /**
  * Puts the component into edit mode
  */
 function enterEditMode() {
     // Set the title field to the category's title so we can rename it.
-    title.value = props.category?.name
+    title.value = props.name
     isEditing.value = true
 }
 
 /**
  * Renames the category
  */
-async function renameCategory() {
+function renameCategory() {
     if (!title.value) {
         return
     }
     // When change is fired, update the category title to trigger updating the profile.
-    await props.category.setName(title.value, kpAPI.passphrase.value)
+    emit('updated', title.value)
     close()
 }
 
