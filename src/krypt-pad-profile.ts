@@ -75,6 +75,17 @@ class Profile {
 
         return JSON.stringify(data)
     }
+
+    async getCategories(passphrase: string | undefined): Promise<Array<IDecryptedCategory>> {
+        // Create a new array to store the decrypted categories
+        const decryptedCategories: Array<IDecryptedCategory> = []
+        for (const category of this.categories ?? []) {
+            // Decrypt the category and add it to the list
+            decryptedCategories.push(await category.decrypt(passphrase))
+        }
+
+        return decryptedCategories
+    }
 }
 
 /**
@@ -163,6 +174,7 @@ interface IDecryptedItem {
     notes: string | undefined
     starred: boolean
     categoryId: string | undefined
+    fields: Array<Field>
 }
 
 /**
@@ -195,7 +207,8 @@ class Item extends ProfileEntity {
             name: name,
             notes: notes,
             starred: this.starred,
-            categoryId: this.categoryId
+            categoryId: this.categoryId,
+            fields: this.fields
         }
     }
 

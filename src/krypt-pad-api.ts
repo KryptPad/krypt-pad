@@ -258,7 +258,7 @@ class KryptPadAPI {
         if (this.fileName.value && this.passphrase.value) {
             try {
                 const plainText = await this.profile.value?.toJSON()
-                if (!plainText){
+                if (!plainText) {
                     throw new Error('Failed to convert profile to JSON')
                 }
 
@@ -289,10 +289,10 @@ class KryptPadAPI {
             const index = this.profile.value.categories.indexOf(category)
             if (index > -1) {
                 this.profile.value.categories.splice(index, 1)
-                // Set all item category ids with matching category id to null
+                // Set all item category ids with matching category id to undefined
                 const matchingItems = this.profile.value.items.filter((i) => i.categoryId === category.id)
                 for (const item of matchingItems) {
-                    item.categoryId = null
+                    item.categoryId = undefined
                 }
             }
         }

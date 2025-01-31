@@ -6,8 +6,8 @@
                     <!-- We are not using v-model here because v-model.lazy does not work on custom components. And We
                     do not want to trigger file update on every keypress! -->
                     <v-text-field
-                        :model-value="item.title"
-                        @change="item.title = $event.target.value"
+                        :model-value="item.name"
+                        @change="item.name = $event.target.value"
                         type="text"
                         class="flex-grow-0"
                         label="card name"
@@ -22,6 +22,7 @@
                         label="category"
                         :items="categories"
                         item-value="id"
+                        item-title="name"
                         :return-object="false"
                     ></v-combobox>
                 </v-col>
@@ -72,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { Item, Field, IIdTitle } from '@/krypt-pad-profile'
+import { Item, Field, IDecryptedCategory, IDecryptedItem } from '@/krypt-pad-profile'
 import { ref, inject, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import NameValue from '@/components/NameValue.vue'
@@ -90,22 +91,9 @@ const isEditing = ref(false)
 const fieldName = ref<string | null>(null)
 
 // Find the item by its id
-const item = kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)
-
-const categories = computed(() => {
-    // Create a default selection from the interface
-    const defaultSelection: IIdTitle = {
-        id: undefined,
-        title: 'None'
-    }
-
-    // If the profile is null, just return the default selection.
-    if (!kpAPI.profile.value) {
-        return [defaultSelection]
-    }
-
-    return [defaultSelection, ...kpAPI.profile.value.categories]
-})
+const item = ref<IDecryptedItem>()
+// Store the decrypted categories
+const categories = ref<Array<IDecryptedCategory>>()
 
 // Event handlers
 function addField() {
@@ -115,7 +103,7 @@ function addField() {
 
     isEditing.value = false
     // Add the field to the profile
-    item?.fields.push(new Field(fieldName.value, null))
+    item.value?.fields.push(new Field(fieldName.value, null))
     // Clear field name
     fieldName.value = null
 }
@@ -124,6 +112,9 @@ function backHome() {
     router.back()
 }
 
+/**
+ * Delete the item from the profile
+ */
 async function deleteItem() {
     if (!kpAPI.profile.value || !item) {
         return
@@ -133,8 +124,8 @@ async function deleteItem() {
         return
     }
 
-    // Remove item from list
-    const index = kpAPI.profile.value.items.indexOf(item)
+    // Find the item by its id
+    const index = kpAPI.profile.value.items.findIndex((i: Item) => i.id === item.value?.id)
     if (index > -1) {
         kpAPI.profile.value.items.splice(index, 1)
         // Go back to the home page
@@ -142,6 +133,10 @@ async function deleteItem() {
     }
 }
 
+/**
+ * Delete a field from the item
+ * @param {Field} field
+ */
 async function onDeleteField(field: Field) {
     if (!item) {
         return
@@ -152,11 +147,35 @@ async function onDeleteField(field: Field) {
     }
 
     // Remove field from list
-    const index = item.fields.indexOf(field)
-    if (index > -1) {
-        item.fields.splice(index, 1)
+    const index = item.value?.fields.indexOf(field)
+    if (index && index > -1) {
+        item.value?.fields.splice(index, 1)
     }
 }
+
+/**
+ * Load the item from the profile
+ */
+async function initData() {
+    // Create a default selection from the interface
+    const defaultSelection: IDecryptedCategory = {
+        id: undefined,
+        name: 'None'
+    }
+
+    // If the profile is null, just return the default selection.
+    if (!kpAPI.profile.value) {
+        return [defaultSelection]
+    }
+
+    const profileCategories = await kpAPI.profile.value.getCategories(kpAPI.passphrase.value)
+
+    categories.value = [defaultSelection, ...profileCategories]
+    console.log(categories.value)
+    item.value = await kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)?.decrypt(kpAPI.passphrase.value)
+}
+
+initData()
 </script>
 
 <style>

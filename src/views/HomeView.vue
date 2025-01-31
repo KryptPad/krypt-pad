@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject, ref } from 'vue'
+import { inject, ref, watch } from 'vue'
 import ValueTextField from '@/components/ValueTextField.vue'
 import CategoryListItem from '@/components/CategoryListItem.vue'
 import { useRouter } from 'vue-router'
@@ -104,16 +104,13 @@ for (const category of kpAPI.profile.value?.categories ?? []) {
     categories.value.push(await category.decrypt(kpAPI.passphrase.value))
 }
 
-// Map the decrypted items from the profile
-const items: Array<IDecryptedItem> = []
-for (const item of kpAPI.profile.value?.items ?? []) {
-    // Decrypt the item and add it to the list
-    items.push(await item.decrypt(kpAPI.passphrase.value))
-}
+// Decrypted items
+const items = ref<Array<IDecryptedItem>>([])
 
 // Computed
 const filteredItems = computed(() => {
-    return items?.filter(
+    console.log('filteredItems')
+    const fi = items.value?.filter(
         (item) =>
             // Filter for category and starred
             ((!allStarred.value && !selectedCategory.value) ||
@@ -122,6 +119,8 @@ const filteredItems = computed(() => {
             // Filter search text
             (!searchText.value || item.name?.toLowerCase().includes(searchText.value?.toLowerCase()))
     )
+
+    return fi
 })
 
 /**
@@ -180,7 +179,8 @@ async function addItemAsync() {
         name: 'Untitled',
         starred: false,
         categoryId: selectedCategory.value?.id,
-        notes: undefined
+        notes: undefined,
+        fields: []
     }
 
     await item.encrypt(itemData, kpAPI.passphrase.value)
@@ -188,11 +188,21 @@ async function addItemAsync() {
     // Add the item to the global items list
     kpAPI.profile.value?.items.push(item)
     // Go to item page
-    router.push({ name: 'item', params: { id: item.id } })
+    itemSelected(itemData)
 }
 
 function itemSelected(item: IDecryptedItem) {
     router.push({ name: 'item', params: { id: item.id } })
+}
+
+if (kpAPI.profile.value) {
+    watch(kpAPI.profile.value?.items, async () => {
+        // Map the decrypted items from the profile
+        for (const item of kpAPI.profile.value?.items ?? []) {
+            // Decrypt the item and add it to the list
+            items.value?.push(await item.decrypt(kpAPI.passphrase.value))
+        }
+    })
 }
 </script>
 
