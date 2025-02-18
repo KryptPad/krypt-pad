@@ -166,6 +166,11 @@ class IPCBridge {
     close() {
         this.ipcRenderer.send('close')
     }
+
+    // invoke get-platform
+    async getPlatform(): Promise<string> {
+        return await this.ipcRenderer.invoke('get-platform')
+    }
 }
 
 export { IPCBridge }

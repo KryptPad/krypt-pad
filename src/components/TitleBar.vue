@@ -1,22 +1,22 @@
 <template>
     <div class="title-bar d-flex align-center justify-space-between flex-nowrap w-100" :class="{ focused: isFocused }">
         <!-- <template v-if="$slots.icon"> -->
-        <div class="ml-2 mr-2 icon-wrapper">
+        <div v-if="platform !== 'darwin'" class="ml-2 mr-2 icon-wrapper">
             <slot name="icon"></slot>
         </div>
         <!-- </template> -->
 
-        <div>{{ title }}</div>
+        <div v-if="platform !== 'darwin'">{{ title }}</div>
 
-        <div class="mx-3 title-bar-menu">
+        <div v-if="platform !== 'darwin'" class="mx-3 title-bar-menu">
             <slot name="menu"> </slot>
         </div>
 
-        <div>
+        <div style="justify-self: center; margin: auto">
             <slot name="info"></slot>
         </div>
 
-        <div class="ml-auto">
+        <div v-if="platform !== 'darwin'" class="ml-auto">
             <button class="title-bar-button title-bar-button-minimize" type="button" @click="minimize"><v-icon icon="mdi-window-minimize" /></button>
             <button class="title-bar-button title-bar-button-maximize-restore" type="button" @click="toggleMaximizeRestore">
                 <v-icon :icon="isMaximized ? 'mdi-window-restore' : 'mdi-window-maximize'" />
@@ -32,6 +32,7 @@ import KryptPadAPI from '@/krypt-pad-api'
 
 // Use the IPC renderer instance in the KP API
 const kpAPI = inject<KryptPadAPI>('kpAPI')!
+    const platform = inject<string>('platform')!
 
 // Define our reactive properties
 const isMaximized = ref(false)

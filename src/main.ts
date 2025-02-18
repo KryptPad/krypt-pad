@@ -11,7 +11,7 @@ import { SettingsManager } from '@/app-settings'
 // Main component
 import App from '@/App.vue'
 
-function loadApp(appSettings?: SettingsManager) {
+function loadApp(platform: string, appSettings?: SettingsManager) {
     // Configure vuetify
     const vuetify = createVuetify({
         defaults: {
@@ -40,6 +40,7 @@ function loadApp(appSettings?: SettingsManager) {
 
     // Provide the settings as a global object. If none exist, then create a new one.
     app.provide('appSettings', appSettings ?? new SettingsManager())
+    app.provide('platform', platform)
     // Use plugins
     app.use(router)
     app.use(vuetify)
@@ -53,15 +54,16 @@ function loadApp(appSettings?: SettingsManager) {
 async function init() {
     const ipcBridge = new IPCBridge()
     // Load the settigns
-    let appSettings
+    let appSettings: SettingsManager | undefined
+    let platform = await ipcBridge.getPlatform()
     try {
         appSettings = await ipcBridge.loadConfigFile()
     } catch (ex) {
         console.error(ex)
-    } finally {
-        // Initialize the app with the loaded settings
-        loadApp(appSettings)
     }
+
+    // Initialize the app with the loaded settings
+    loadApp(platform, appSettings)
 }
 
 init()

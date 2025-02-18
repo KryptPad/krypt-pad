@@ -27,6 +27,9 @@ import { KryptPadError } from '../common/error-utils'
 process.env.DIST = path.join(__dirname, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
+// Log the platform
+console.log("Platform detected as " + process.platform)
+
 let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
@@ -109,6 +112,7 @@ async function createWindow() {
 // Create menu structure
 menu.append(
     new MenuItem({
+        
         label: 'File',
         submenu: [
             {
@@ -125,6 +129,8 @@ menu.append(
                     win?.webContents.send('handle-shortcut', SHORTCUT_OPEN)
                 }
             },
+            // Add a divider
+            { type: 'separator' },
             {
                 role: 'close',
                 label: 'Close File',
@@ -133,6 +139,7 @@ menu.append(
                     win?.webContents.send('handle-shortcut', SHORTCUT_CLOSE)
                 }
             }
+            
         ]
     })
 )
@@ -317,6 +324,11 @@ app.whenReady().then(async () => {
         }
 
         return ipcData
+    })
+
+    // Handles getting the process platform
+    ipcMain.handle('get-platform', () => {
+        return process.platform
     })
 
     createWindow()
