@@ -254,8 +254,13 @@ class KryptPadAPI {
      */
     commitProfileAsync = async () => {
         console.info(`Writing changes to file '${this.fileName.value}'`)
+
         // Encrypt the profile. But first, make sure we have a filename and a passphrase
         if (this.fileName.value && this.passphrase.value) {
+            this.saving.value = true
+            // Keep the user session alive
+            this._resetTimeoutCallback?.()
+
             try {
                 const plainText = await this.profile.value?.toJSON()
                 if (!plainText) {
@@ -272,6 +277,8 @@ class KryptPadAPI {
                 // Display alert
                 await this.alertDialog?.value?.error(err)
             }
+
+            this.saving.value = false
         }
     }
 
@@ -306,12 +313,8 @@ class KryptPadAPI {
         watch(
             profile,
             async () => {
-                // Keep the user session alive
-                this._resetTimeoutCallback?.()
                 // Commit the profile
-                this.saving.value = true
                 await this.commitProfileAsync()
-                this.saving.value = false
             },
             { deep: true }
         )

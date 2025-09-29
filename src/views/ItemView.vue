@@ -1,13 +1,13 @@
 <template>
-    <v-main v-if="item" :scrollable="true">
+    <v-main v-if="decryptedItem" :scrollable="true">
         <v-container class="d-flex flex-column h-100">
             <v-row class="flex-grow-0">
                 <v-col>
                     <!-- We are not using v-model here because v-model.lazy does not work on custom components. And We
                     do not want to trigger file update on every keypress! -->
                     <v-text-field
-                        :model-value="item.name"
-                        @change="item.name = $event.target.value"
+                        :model-value="decryptedItem.name"
+                        @change="decryptedItem.name = $event.target.value"
                         type="text"
                         class="flex-grow-0"
                         label="card name"
@@ -17,7 +17,7 @@
                 </v-col>
                 <v-col>
                     <v-combobox
-                        v-model="item.categoryId"
+                        v-model="decryptedItem.categoryId"
                         class="flex-grow-0"
                         label="category"
                         :items="categories"
@@ -30,8 +30,8 @@
 
             <div class="flex-fill d-flex mb-3">
                 <v-textarea
-                    :model-value="item.notes"
-                    @change="item.notes = $event.target.value"
+                    :model-value="decryptedItem.notes"
+                    @change="decryptedItem.notes = $event.target.value"
                     label="notes"
                     class="d-flex flex-column fill-height mr-3"
                     :hide-details="true"
@@ -50,9 +50,9 @@
                         </v-card-text>
                     </v-card>
 
-                    <v-card v-for="(_, index) in item.fields" :key="index" class="mt-2">
+                    <v-card v-for="(_, index) in decryptedItem.fields" :key="index" class="mt-2">
                         <v-card-text>
-                            <name-value v-model="item.fields[index]" @delete="onDeleteField"></name-value>
+                            <name-value v-model="decryptedItem.fields[index]" @delete="onDeleteField"></name-value>
                         </v-card-text>
                     </v-card>
                 </div>
@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import { Item, Field, IDecryptedCategory, IDecryptedItem } from '@/krypt-pad-profile'
-import { ref, inject, computed } from 'vue'
+import { ref, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import NameValue from '@/components/NameValue.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -91,7 +91,7 @@ const isEditing = ref(false)
 const fieldName = ref<string | null>(null)
 
 // Find the item by its id
-const item = ref<IDecryptedItem>()
+const decryptedItem = ref<IDecryptedItem>()
 // Store the decrypted categories
 const categories = ref<Array<IDecryptedCategory>>()
 
@@ -103,7 +103,7 @@ function addField() {
 
     isEditing.value = false
     // Add the field to the profile
-    item.value?.fields.push(new Field(fieldName.value, null))
+    decryptedItem.value?.fields.push(new Field(fieldName.value, null))
     // Clear field name
     fieldName.value = null
 }
@@ -116,7 +116,7 @@ function backHome() {
  * Delete the item from the profile
  */
 async function deleteItem() {
-    if (!kpAPI.profile.value || !item) {
+    if (!kpAPI.profile.value || !decryptedItem) {
         return
     }
 
@@ -125,7 +125,7 @@ async function deleteItem() {
     }
 
     // Find the item by its id
-    const index = kpAPI.profile.value.items.findIndex((i: Item) => i.id === item.value?.id)
+    const index = kpAPI.profile.value.items.findIndex((i: Item) => i.id === decryptedItem.value?.id)
     if (index > -1) {
         kpAPI.profile.value.items.splice(index, 1)
         // Go back to the home page
@@ -138,7 +138,7 @@ async function deleteItem() {
  * @param {Field} field
  */
 async function onDeleteField(field: Field) {
-    if (!item) {
+    if (!decryptedItem) {
         return
     }
 
@@ -147,9 +147,9 @@ async function onDeleteField(field: Field) {
     }
 
     // Remove field from list
-    const index = item.value?.fields.indexOf(field)
+    const index = decryptedItem.value?.fields.indexOf(field)
     if (index && index > -1) {
-        item.value?.fields.splice(index, 1)
+        decryptedItem.value?.fields.splice(index, 1)
     }
 }
 
@@ -172,10 +172,19 @@ async function initData() {
 
     categories.value = [defaultSelection, ...profileCategories]
     console.log(categories.value)
-    item.value = await kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)?.decrypt(kpAPI.passphrase.value)
+    decryptedItem.value = await kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)?.decrypt(kpAPI.passphrase.value)
 }
 
 initData()
+
+// Watch for changes in the item
+watch(decryptedItem, async () => {
+    if (decryptedItem.value) {
+        // Encrypt and save the item
+        kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)
+        //await item.value.encrypt(kpAPI.passphrase.value)
+    }
+})
 </script>
 
 <style>
