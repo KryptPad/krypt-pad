@@ -65,11 +65,27 @@ class Profile {
         return profile
     }
 
+    /**
+     * Converts the profile to a JSON string
+     * @returns A JSON string representing the profile
+     */
     async toJSON(): Promise<string> {
         // Convert the profile into a data structure then stringify it
         const data = {
             categories: this.categories.map((c) => {
                 return { id: c.id, name: c._encryptedName }
+            }),
+            items: this.items.map((i) => {
+                return {
+                    id: i.id,
+                    name: i._encryptedName,
+                    notes: i.notes,
+                    starred: i.starred,
+                    categoryId: i.categoryId,
+                    fields: i.fields.map((f) => {
+                        return { name: f.name, value: f.value }
+                    })
+                }
             })
         }
 

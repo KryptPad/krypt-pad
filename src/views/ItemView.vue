@@ -61,6 +61,7 @@
             <div class="d-flex align-items-center">
                 <v-btn-group>
                     <v-btn variant="tonal" prepend-icon="mdi-arrow-left" text="BACK" @click="backHome"></v-btn>
+                    <v-btn variant="tonal" prepend-icon="mdi-content-save" text="SAVE" @click="saveItem"></v-btn>
                 </v-btn-group>
 
                 <v-btn-group class="ml-auto">
@@ -74,12 +75,11 @@
 
 <script setup lang="ts">
 import { Item, Field, IDecryptedCategory, IDecryptedItem } from '@/krypt-pad-profile'
-import { ref, inject, watch } from 'vue'
+import { ref, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import NameValue from '@/components/NameValue.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import KryptPadAPI from '@/krypt-pad-api'
-
 const router = useRouter()
 
 const kpAPI = inject<KryptPadAPI>('kpAPI')!
@@ -95,7 +95,24 @@ const decryptedItem = ref<IDecryptedItem>()
 // Store the decrypted categories
 const categories = ref<Array<IDecryptedCategory>>()
 
+// Load the item when the component is mounted
+onMounted(async () => {
+    await initData()
+})
+
 // Event handlers
+async function saveItem() {
+    if (!decryptedItem.value) {
+        return
+    }
+    console.log('Saving item', decryptedItem.value)
+    // Encrypt and save the item
+    const item = kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)
+    // Encrypt the item and save it
+    await item?.encrypt(decryptedItem.value, kpAPI.passphrase.value)
+    //await kpAPI.commitProfileAsync()
+}
+
 function addField() {
     if (!fieldName.value) {
         return
@@ -103,7 +120,7 @@ function addField() {
 
     isEditing.value = false
     // Add the field to the profile
-    decryptedItem.value?.fields.push(new Field(fieldName.value, null))
+    decryptedItem.value?.fields?.push(new Field(fieldName.value, null))
     // Clear field name
     fieldName.value = null
 }
@@ -116,7 +133,7 @@ function backHome() {
  * Delete the item from the profile
  */
 async function deleteItem() {
-    if (!kpAPI.profile.value || !decryptedItem) {
+    if (!kpAPI.profile.value || !decryptedItem.value) {
         return
     }
 
@@ -138,7 +155,7 @@ async function deleteItem() {
  * @param {Field} field
  */
 async function onDeleteField(field: Field) {
-    if (!decryptedItem) {
+    if (!decryptedItem.value) {
         return
     }
 
@@ -147,9 +164,9 @@ async function onDeleteField(field: Field) {
     }
 
     // Remove field from list
-    const index = decryptedItem.value?.fields.indexOf(field)
+    const index = decryptedItem.value?.fields?.indexOf(field)
     if (index && index > -1) {
-        decryptedItem.value?.fields.splice(index, 1)
+        decryptedItem.value?.fields?.splice(index, 1)
     }
 }
 
@@ -174,17 +191,6 @@ async function initData() {
     console.log(categories.value)
     decryptedItem.value = await kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)?.decrypt(kpAPI.passphrase.value)
 }
-
-initData()
-
-// Watch for changes in the item
-watch(decryptedItem, async () => {
-    if (decryptedItem.value) {
-        // Encrypt and save the item
-        kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)
-        //await item.value.encrypt(kpAPI.passphrase.value)
-    }
-})
 </script>
 
 <style>
