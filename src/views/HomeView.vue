@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject, ref, watch } from 'vue'
+import { inject, onMounted, ref, watch } from 'vue'
 import ValueTextField from '@/components/ValueTextField.vue'
 import CategoryListItem from '@/components/CategoryListItem.vue'
 import { useRouter } from 'vue-router'
@@ -121,6 +121,10 @@ const filteredItems = computed(() => {
     )
 
     return fi
+})
+
+onMounted(async () => {
+    await getItems()
 })
 
 /**
@@ -195,13 +199,18 @@ function itemSelected(item: IDecryptedItem) {
     router.push({ name: 'item', params: { id: item.id } })
 }
 
+async function getItems() {
+    items.value = []
+    // Map the decrypted items from the profile
+    for (const item of kpAPI.profile.value?.items ?? []) {
+        // Decrypt the item and add it to the list
+        items.value?.push(await item.decrypt(kpAPI.passphrase.value))
+    }
+}
+
 if (kpAPI.profile.value) {
     watch(kpAPI.profile.value?.items, async () => {
-        // Map the decrypted items from the profile
-        for (const item of kpAPI.profile.value?.items ?? []) {
-            // Decrypt the item and add it to the list
-            items.value?.push(await item.decrypt(kpAPI.passphrase.value))
-        }
+        await getItems()
     })
 }
 </script>
