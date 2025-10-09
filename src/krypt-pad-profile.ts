@@ -211,6 +211,7 @@ class Item extends ProfileEntity {
      * Decrypt the items to an IDecryptedItem object
      */
     async decrypt(passphrase: string | undefined): Promise<IDecryptedItem> {
+        console.info('Decrypting item', this)
         // Create a new IPCBridge
         const ipcBridge: IPCBridge = new IPCBridge()
         // Decrypt the name
@@ -232,6 +233,7 @@ class Item extends ProfileEntity {
      * Encrypt the items from an IDecryptedItem object
      */
     async encrypt(data: IDecryptedItem, passphrase: string | undefined) {
+        console.info('Encrypting item', data)
         // Create a new IPCBridge
         const ipcBridge: IPCBridge = new IPCBridge()
         // Encrypt the name

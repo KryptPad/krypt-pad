@@ -61,7 +61,6 @@
             <div class="d-flex align-items-center">
                 <v-btn-group>
                     <v-btn variant="tonal" prepend-icon="mdi-arrow-left" text="BACK" @click="backHome"></v-btn>
-                    <v-btn variant="tonal" prepend-icon="mdi-content-save" text="SAVE" @click="saveItem"></v-btn>
                 </v-btn-group>
 
                 <v-btn-group class="ml-auto">
@@ -75,7 +74,7 @@
 
 <script setup lang="ts">
 import { Item, Field, IDecryptedCategory, IDecryptedItem } from '@/krypt-pad-profile'
-import { ref, inject, onMounted } from 'vue'
+import { ref, inject, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import NameValue from '@/components/NameValue.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -89,6 +88,7 @@ const confirmDeletePrompt = ref<InstanceType<typeof ConfirmDialog>>()
 const props = defineProps({ id: String })
 const isEditing = ref(false)
 const fieldName = ref<string | null>(null)
+const item = ref<Item>()
 
 // Find the item by its id
 const decryptedItem = ref<IDecryptedItem>()
@@ -99,19 +99,6 @@ const categories = ref<Array<IDecryptedCategory>>()
 onMounted(async () => {
     await initData()
 })
-
-// Event handlers
-async function saveItem() {
-    if (!decryptedItem.value) {
-        return
-    }
-    console.log('Saving item', decryptedItem.value)
-    // Encrypt and save the item
-    const item = kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)
-    // Encrypt the item and save it
-    await item?.encrypt(decryptedItem.value, kpAPI.passphrase.value)
-    //await kpAPI.commitProfileAsync()
-}
 
 function addField() {
     if (!fieldName.value) {
@@ -145,6 +132,8 @@ async function deleteItem() {
     const index = kpAPI.profile.value.items.findIndex((i: Item) => i.id === decryptedItem.value?.id)
     if (index > -1) {
         kpAPI.profile.value.items.splice(index, 1)
+        // Commit the profile
+        await kpAPI.commitProfileAsync()
         // Go back to the home page
         router.back()
     }
@@ -188,8 +177,23 @@ async function initData() {
     const profileCategories = await kpAPI.profile.value.getCategories(kpAPI.passphrase.value)
 
     categories.value = [defaultSelection, ...profileCategories]
-    console.log(categories.value)
-    decryptedItem.value = await kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)?.decrypt(kpAPI.passphrase.value)
+    item.value = kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)
+    decryptedItem.value = await item.value?.decrypt(kpAPI.passphrase.value)
+
+    // Start watching the item for changes
+    watch(
+        decryptedItem,
+        async (newItem) => {
+            if (newItem) {
+                console.log('Item changed', newItem)
+                // Encrypt and save the item
+                await item.value?.encrypt(newItem, kpAPI.passphrase.value)
+                // Commit the profile
+                await kpAPI.commitProfileAsync()
+            }
+        },
+        { deep: true }
+    )
 }
 </script>
 

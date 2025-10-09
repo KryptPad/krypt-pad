@@ -62,53 +62,56 @@ class KryptPadAPI {
         }
     }
 
-    /**
-     * Encrypts the data using the passphrase
-     * @param {string} data The data to encrypt
-     * @returns
-     */
-    async encryptData(data: string): Promise<string | undefined> {
-        if (!this.passphrase.value) {
-            throw new Error('Passphrase is required to encrypt data.')
-        }
+    // /**
+    //  * Encrypts the data using the passphrase
+    //  * @param {string} data The data to encrypt
+    //  * @returns
+    //  */
+    // async encryptData(data: string): Promise<string | undefined> {
+    //     if (!this.passphrase.value) {
+    //         throw new Error('Passphrase is required to encrypt data.')
+    //     }
 
-        return await this.ipcBridge.encryptData(data, this.passphrase.value)
-    }
+    //     console.info('Encrypting data...', data)
 
-    /**
-     * Decrypts the data using the passphrase
-     * @param {string} data The data to decrypt
-     * @returns
-     */
-    async decryptData(data: string): Promise<string | undefined> {
-        let attempts = 0
-        while (attempts < 3) {
-            // Prompt for passphrase to decrypt the file
-            this.passphrase.value = await this._requirePassphraseCallback?.(false)
-            if (!this.passphrase.value || !this.fileName.value) {
-                break
-            }
+    //     return await this.ipcBridge.encryptData(data, this.passphrase.value)
+    // }
 
-            try {
-                // Decrypt the data
-                return await this.ipcBridge.decryptData(data, this.passphrase.value)
-            } catch (ex) {
-                const err = getExceptionMessage(ex)
-                console.error(err, ex)
+    // /**
+    //  * Decrypts the data using the passphrase
+    //  * @param {string} data The data to decrypt
+    //  * @returns
+    //  */
+    // async decryptData(data: string): Promise<string | undefined> {
+    //     console.info('Decrypting data...', data)
+    //     let attempts = 0
+    //     while (attempts < 3) {
+    //         // Prompt for passphrase to decrypt the file
+    //         this.passphrase.value = await this._requirePassphraseCallback?.(false)
+    //         if (!this.passphrase.value || !this.fileName.value) {
+    //             break
+    //         }
 
-                // Display alert
-                await this.alertDialog?.value?.error(err)
+    //         try {
+    //             // Decrypt the data
+    //             return await this.ipcBridge.decryptData(data, this.passphrase.value)
+    //         } catch (ex) {
+    //             const err = getExceptionMessage(ex)
+    //             console.error(err, ex)
 
-                // Check if this is a decryption error. If so, increase attempt count.
-                if (ex instanceof KryptPadError && ex.code === KryptPadErrorCodes.DECRYPT_ERROR) {
-                    attempts++
-                } else {
-                    // This is not a decryption attempt error, break now.
-                    break
-                }
-            }
-        }
-    }
+    //             // Display alert
+    //             await this.alertDialog?.value?.error(err)
+
+    //             // Check if this is a decryption error. If so, increase attempt count.
+    //             if (ex instanceof KryptPadError && ex.code === KryptPadErrorCodes.DECRYPT_ERROR) {
+    //                 attempts++
+    //             } else {
+    //                 // This is not a decryption attempt error, break now.
+    //                 break
+    //             }
+    //         }
+    //     }
+    // }
 
     /**
      * Opens an existing file
@@ -145,7 +148,6 @@ class KryptPadAPI {
                     if (p) {
                         const rp = reactive(p)
                         this.profile.value = rp
-                        this.watchProfile(this.profile.value)
                     }
 
                     // Set fileOpen flag
@@ -207,7 +209,6 @@ class KryptPadAPI {
         if (p) {
             const rp = reactive(p)
             this.profile.value = rp
-            this.watchProfile(this.profile.value)
         }
 
         // Commit the file once after creation
@@ -256,7 +257,7 @@ class KryptPadAPI {
         console.info(`Writing changes to file '${this.fileName.value}'`)
 
         // Encrypt the profile. But first, make sure we have a filename and a passphrase
-        if (this.fileName.value && this.passphrase.value) {
+        if (this.fileName.value && this.passphrase.value && !this.saving.value) {
             this.saving.value = true
             // Keep the user session alive
             this._resetTimeoutCallback?.()
@@ -303,21 +304,6 @@ class KryptPadAPI {
                 }
             }
         }
-    }
-
-    /**
-     * Watches a profile for any changes and then commits the changes automatically.
-     * @param Profile The profile to watch
-     */
-    private watchProfile(profile: Profile) {
-        watch(
-            profile,
-            async () => {
-                // Commit the profile
-                await this.commitProfileAsync()
-            },
-            { deep: true }
-        )
     }
 }
 

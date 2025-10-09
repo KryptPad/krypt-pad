@@ -60,7 +60,7 @@
     <v-main :scrollable="true">
         <v-container fluid class="d-flex flex-wrap">
             <!-- List of items -->
-            <v-card v-for="item in filteredItems" :key="item.id" width="20rem" @click="itemSelected(item)" class="mr-3 mb-3">
+            <v-card elevation="3" v-for="item in filteredItems" :key="item.id" width="20rem" @click="itemSelected(item)" class="mr-3 mb-3">
                 <v-card-title class="d-flex">
                     <span class="mr-3 text-truncate">{{ item.name }}</span>
 
@@ -68,7 +68,7 @@
                 </v-card-title>
 
                 <v-card-actions>
-                    <v-btn icon="mdi-star" :color="item.starred ? 'yellow' : undefined" @click.stop="item.starred = !item.starred"></v-btn>
+                    <v-btn icon="mdi-star" :color="item.starred ? 'yellow' : undefined" @click.stop="toggleStarred(item)"></v-btn>
                 </v-card-actions>
             </v-card>
         </v-container>
@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject, onMounted, ref, watch } from 'vue'
+import { inject, onActivated, ref } from 'vue'
 import ValueTextField from '@/components/ValueTextField.vue'
 import CategoryListItem from '@/components/CategoryListItem.vue'
 import { useRouter } from 'vue-router'
@@ -123,7 +123,11 @@ const filteredItems = computed(() => {
     return fi
 })
 
-onMounted(async () => {
+// onMounted(async () => {
+//     await getItems()
+// })
+
+onActivated(async () => {
     await getItems()
 })
 
@@ -146,6 +150,8 @@ async function addCategory(title: string) {
 
     // Add the category to the profile
     kpAPI.profile.value?.categories.push(category)
+    // Commit the profile
+    await kpAPI.commitProfileAsync()
     // Add the decrypted category to the list
     categories.value.push(categoryData)
 }
@@ -160,19 +166,34 @@ function getCategory(item: IDecryptedItem): IDecryptedCategory | undefined {
     return category
 }
 
+/**
+ * Handles when a category is selected from the list
+ * @param category The category that was selected or null for all items
+ * @param starred Whether to show starred items only
+ */
 function categorySelected(category: IDecryptedCategory | null, starred?: boolean) {
     selectedCategory.value = category
     allStarred.value = starred ?? false
 }
 
+/**
+ * Updates a category's title
+ * @param category The category that was updated
+ * @param title The new title for the category
+ */
 async function categoryUpdated(category: IDecryptedCategory, title: string) {
     // Find the category in the profile
     const c = kpAPI.profile.value?.categories.find((c) => c.id === category.id)
     // Update the category in the profile
     category.name = title
     await c?.encrypt(category, kpAPI.passphrase.value)
+    // Commit the profile
+    await kpAPI.commitProfileAsync()
 }
 
+/**
+ * Adds a new item to the profile
+ */
 async function addItemAsync() {
     // Create new item within the selected category
     const item = new Item(undefined)
@@ -189,16 +210,44 @@ async function addItemAsync() {
 
     await item.encrypt(itemData, kpAPI.passphrase.value)
 
-    // Add the item to the global items list
+    // Add the item to the profile
     kpAPI.profile.value?.items.push(item)
+    // Commit the profile
+    await kpAPI.commitProfileAsync()
+    // Add to the items list
+    items.value?.push(itemData)
     // Go to item page
     itemSelected(itemData)
 }
 
+/**
+ * Toggles the starred state of an item
+ * @param item The item to toggle starred state
+ */
+function toggleStarred(itemData: IDecryptedItem) {
+    itemData.starred = !itemData.starred
+    // Find the item in the profile
+    const item = kpAPI.profile.value?.items.find((it) => it.id === itemData.id)
+    if (!item) {
+        return
+    }
+    // Update the item in the profile
+    item.starred = itemData.starred
+    // Commit the profile
+    kpAPI.commitProfileAsync()
+}
+
+/**
+ * Handles when an item is selected from the list
+ * @param item The item that was selected
+ */
 function itemSelected(item: IDecryptedItem) {
     router.push({ name: 'item', params: { id: item.id } })
 }
 
+/**
+ * Gets the items from the profile and decrypts them
+ */
 async function getItems() {
     items.value = []
     // Map the decrypted items from the profile
@@ -206,12 +255,6 @@ async function getItems() {
         // Decrypt the item and add it to the list
         items.value?.push(await item.decrypt(kpAPI.passphrase.value))
     }
-}
-
-if (kpAPI.profile.value) {
-    watch(kpAPI.profile.value?.items, async () => {
-        await getItems()
-    })
 }
 </script>
 
