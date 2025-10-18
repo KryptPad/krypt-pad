@@ -56,6 +56,7 @@ async function createWindow() {
 
     // Create the browser window.
     win = new BrowserWindow({
+        title: "Krypt Pad",
         x: mainWindowState.x,
         y: mainWindowState.y,
         width: mainWindowState.width,
