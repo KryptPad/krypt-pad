@@ -49,10 +49,10 @@ class Profile {
                 const item = new Item(i.id)
                 item.categoryId = i.categoryId
                 item._encryptedName = i.name
-                item.notes = i.notes
+                item._encryptedNotes = i.notes
                 item.starred = i.starred
 
-                // Add fields to the item
+                // Add fields to the item (stored encrypted)
                 for (const field of i.fields) {
                     item.fields.push(new Field(field.name, field.value))
                 }
@@ -79,11 +79,11 @@ class Profile {
                 return {
                     id: i.id,
                     name: i._encryptedName,
-                    notes: i.notes,
+                    notes: i._encryptedNotes,
                     starred: i.starred,
                     categoryId: i.categoryId,
                     fields: i.fields.map((f) => {
-                        return { name: f.name, value: f.value }
+                        return { name: f.encryptedName, value: f.encryptedValue }
                     })
                 }
             })
@@ -110,8 +110,6 @@ class Profile {
 interface IProfileEntity {
     id: string | undefined
     _encryptedName: string | undefined
-    // get name(): string | undefined
-    // setName(name: string, passphrase: string | undefined): Promise<void>
 }
 
 class ProfileEntity implements IProfileEntity {
@@ -129,19 +127,6 @@ class ProfileEntity implements IProfileEntity {
             this.id = id
         }
     }
-
-    // /**
-    //  * Sets the name of the category
-    //  * @param name The name of the category
-    //  * @param passphrase The passphrase to encrypt the name with
-    //  */
-    // async setName(name: string, passphrase: string | undefined) {
-    //     // Create a new IPCBridge
-    //     const ipcBridge: IPCBridge = new IPCBridge()
-    //     // Encrypt the name
-    //     this.encryptedName = await ipcBridge.encryptData(name, passphrase)
-    //     this._name = name
-    // }
 }
 
 interface IDecryptedCategory {
@@ -184,6 +169,10 @@ class Category extends ProfileEntity {
     }
 }
 
+/**
+ * Decrypted representation of an item (plaintext used in UI).
+ * Fields in this object have their name/value in plaintext.
+ */
 interface IDecryptedItem {
     id: string | undefined
     name: string | undefined
@@ -197,7 +186,7 @@ interface IDecryptedItem {
  * Wrapper for user defined data to encrypt. Contains fields and notes
  */
 class Item extends ProfileEntity {
-    notes: string | undefined
+    _encryptedNotes: string | undefined
     starred: boolean = false
     categoryId: string | undefined
     fields: Array<Field> = []
@@ -208,7 +197,8 @@ class Item extends ProfileEntity {
     }
 
     /**
-     * Decrypt the items to an IDecryptedItem object
+     * Decrypt the items to an IDecryptedItem object.
+     * Creates NEW Field objects for the UI layer so they are decoupled from the storage fields.
      */
     async decrypt(passphrase: string | undefined): Promise<IDecryptedItem> {
         console.info('Decrypting item', this)
@@ -217,7 +207,17 @@ class Item extends ProfileEntity {
         // Decrypt the name
         const name = await ipcBridge.decryptData(this._encryptedName, passphrase)
         // Decrypt the notes
-        const notes = await ipcBridge.decryptData(this.notes, passphrase)
+        const notes = await ipcBridge.decryptData(this._encryptedNotes, passphrase)
+
+        // Create NEW Field objects for the UI, decoupled from storage fields.
+        // Decrypt each storage field's encrypted data into the new field's plaintext properties.
+        const decryptedFields: Field[] = []
+        for (const storageField of this.fields) {
+            const uiField = new Field()
+            uiField.name = (await ipcBridge.decryptData(storageField.encryptedName, passphrase)) ?? ''
+            uiField.value = (await ipcBridge.decryptData(storageField.encryptedValue ?? undefined, passphrase)) ?? null
+            decryptedFields.push(uiField)
+        }
 
         return {
             id: this.id,
@@ -225,12 +225,13 @@ class Item extends ProfileEntity {
             notes: notes,
             starred: this.starred,
             categoryId: this.categoryId,
-            fields: this.fields
+            fields: decryptedFields
         }
     }
 
     /**
-     * Encrypt the items from an IDecryptedItem object
+     * Encrypt the items from an IDecryptedItem object.
+     * Rebuilds the storage fields from the UI field data to avoid reactive loop.
      */
     async encrypt(data: IDecryptedItem, passphrase: string | undefined) {
         console.info('Encrypting item', data)
@@ -239,27 +240,62 @@ class Item extends ProfileEntity {
         // Encrypt the name
         this._encryptedName = await ipcBridge.encryptData(data.name, passphrase)
         // Encrypt the notes
-        this.notes = await ipcBridge.encryptData(data.notes, passphrase)
+        this._encryptedNotes = await ipcBridge.encryptData(data.notes, passphrase)
         this.starred = data.starred
         this.categoryId = data.categoryId
+
+        // Rebuild storage fields from UI fields, encrypting each
+        const encryptedFields: Field[] = []
+        for (const uiField of data.fields) {
+            const storageField = new Field()
+            storageField.name = uiField.name
+            storageField.value = uiField.value
+            await storageField.encrypt(passphrase)
+            encryptedFields.push(storageField)
+        }
+        this.fields = encryptedFields
     }
 }
 
 /**
- * User defined fields for items
+ * User defined fields for items.
+ * Stores encrypted properties (encryptedName, encryptedValue) for persistence
+ * and plaintext properties (name, value) for UI binding.
  */
 class Field {
+    encryptedName: string | undefined
+    encryptedValue: string | null
     name: string
     value: string | null
 
     /**
-     * Creates a new item.
-     * @param {String} name
-     * @param {String} value
+     * Creates a new field with PRE-ENCRYPTED name/value (as read from file).
+     * @param encryptedName The encrypted field name
+     * @param encryptedValue The encrypted field value
      */
-    constructor(name: string, value: string | null) {
-        this.name = name
-        this.value = value
+    constructor(encryptedName?: string, encryptedValue?: string | null) {
+        this.encryptedName = encryptedName
+        this.encryptedValue = encryptedValue ?? null
+        this.name = ''
+        this.value = null
+    }
+
+    /**
+     * Decrypts the field's name and value into the plaintext properties
+     */
+    async decrypt(passphrase: string | undefined): Promise<void> {
+        const ipcBridge: IPCBridge = new IPCBridge()
+        this.name = (await ipcBridge.decryptData(this.encryptedName, passphrase)) ?? ''
+        this.value = (await ipcBridge.decryptData(this.encryptedValue ?? undefined, passphrase)) ?? null
+    }
+
+    /**
+     * Encrypts the plaintext name/value into the encrypted properties
+     */
+    async encrypt(passphrase: string | undefined): Promise<void> {
+        const ipcBridge: IPCBridge = new IPCBridge()
+        this.encryptedName = await ipcBridge.encryptData(this.name, passphrase)
+        this.encryptedValue = (await ipcBridge.encryptData(this.value ?? undefined, passphrase)) ?? null
     }
 }
 

@@ -1,4 +1,4 @@
-import { reactive, watch, ref, Ref } from 'vue'
+import { reactive, ref, Ref } from 'vue'
 import { IPCBridge } from '@/bridge'
 import { Category, Profile } from './krypt-pad-profile'
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router'
@@ -206,10 +206,7 @@ class KryptPadAPI {
         this.fileOpened.value = true
         // Create new profile object
         const p = reactive(new Profile())
-        if (p) {
-            const rp = reactive(p)
-            this.profile.value = rp
-        }
+        this.profile.value = p
 
         // Commit the file once after creation
         await this.commitProfileAsync()

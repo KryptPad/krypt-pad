@@ -58,7 +58,7 @@ const theme = useTheme()
 const validationRules = [
     (v: number) => !!v || 'This field is required',
     (v: number) => (v && v >= 60) || 'Timeout must be greater than 60',
-    (v: number) => (v && v <= 600) || 'Timeout must be less than 3600'
+    (v: number) => (v && v <= 600) || 'Timeout must be less than 600'
 ]
 
 const lightMode = ref(appSettings.lightMode.value)

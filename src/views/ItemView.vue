@@ -3,8 +3,6 @@
         <v-container class="d-flex flex-column h-100">
             <v-row class="flex-grow-0">
                 <v-col>
-                    <!-- We are not using v-model here because v-model.lazy does not work on custom components. And We
-                    do not want to trigger file update on every keypress! -->
                     <v-text-field
                         :model-value="decryptedItem.name"
                         @change="decryptedItem.name = $event.target.value"
@@ -38,7 +36,7 @@
                 ></v-textarea>
 
                 <div class="">
-                    Add any additioal data fields you need.
+                    Add any additional data fields you need.
 
                     <v-btn v-if="!isEditing" color="secondary" variant="tonal" @click="isEditing = true" :block="true">ADD FIELD</v-btn>
 
@@ -74,7 +72,7 @@
 
 <script setup lang="ts">
 import { Item, Field, IDecryptedCategory, IDecryptedItem } from '@/krypt-pad-profile'
-import { ref, inject, onMounted, watch } from 'vue'
+import { ref, inject, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import NameValue from '@/components/NameValue.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -90,14 +88,20 @@ const isEditing = ref(false)
 const fieldName = ref<string | null>(null)
 const item = ref<Item>()
 
-// Find the item by its id
 const decryptedItem = ref<IDecryptedItem>()
-// Store the decrypted categories
 const categories = ref<Array<IDecryptedCategory>>()
 
-// Load the item when the component is mounted
+let unwatch: (() => void) | null = null
+
 onMounted(async () => {
     await initData()
+})
+
+onBeforeUnmount(() => {
+    if (unwatch) {
+        unwatch()
+        unwatch = null
+    }
 })
 
 function addField() {
@@ -106,9 +110,10 @@ function addField() {
     }
 
     isEditing.value = false
-    // Add the field to the profile
-    decryptedItem.value?.fields?.push(new Field(fieldName.value, null))
-    // Clear field name
+    const newField = new Field()
+    newField.name = fieldName.value
+    newField.value = null
+    decryptedItem.value?.fields?.push(newField)
     fieldName.value = null
 }
 
@@ -116,9 +121,6 @@ function backHome() {
     router.back()
 }
 
-/**
- * Delete the item from the profile
- */
 async function deleteItem() {
     if (!kpAPI.profile.value || !decryptedItem.value) {
         return
@@ -128,21 +130,14 @@ async function deleteItem() {
         return
     }
 
-    // Find the item by its id
     const index = kpAPI.profile.value.items.findIndex((i: Item) => i.id === decryptedItem.value?.id)
     if (index > -1) {
         kpAPI.profile.value.items.splice(index, 1)
-        // Commit the profile
         await kpAPI.commitProfileAsync()
-        // Go back to the home page
         router.back()
     }
 }
 
-/**
- * Delete a field from the item
- * @param {Field} field
- */
 async function onDeleteField(field: Field) {
     if (!decryptedItem.value) {
         return
@@ -152,43 +147,38 @@ async function onDeleteField(field: Field) {
         return
     }
 
-    // Remove field from list
     const index = decryptedItem.value?.fields?.indexOf(field)
-    if (index && index > -1) {
+    if (index !== undefined && index !== null && index > -1) {
         decryptedItem.value?.fields?.splice(index, 1)
     }
 }
 
-/**
- * Load the item from the profile
- */
 async function initData() {
-    // Create a default selection from the interface
-    const defaultSelection: IDecryptedCategory = {
-        id: undefined,
-        name: 'None'
-    }
-
-    // If the profile is null, just return the default selection.
     if (!kpAPI.profile.value) {
-        return [defaultSelection]
+        return
     }
 
     const profileCategories = await kpAPI.profile.value.getCategories(kpAPI.passphrase.value)
-
+    const defaultSelection: IDecryptedCategory = { id: undefined, name: 'None' }
     categories.value = [defaultSelection, ...profileCategories]
-    item.value = kpAPI.profile.value?.items.find((item: Item) => item.id === props.id)
-    decryptedItem.value = await item.value?.decrypt(kpAPI.passphrase.value)
 
-    // Start watching the item for changes
-    watch(
+    item.value = kpAPI.profile.value?.items.find((i: Item) => i.id === props.id)
+    if (!item.value) {
+        return
+    }
+
+    decryptedItem.value = await item.value.decrypt(kpAPI.passphrase.value)
+
+    // Create a single watcher, tracked so it can be cleaned up
+    if (unwatch) {
+        unwatch()
+    }
+    unwatch = watch(
         decryptedItem,
         async (newItem) => {
-            if (newItem) {
+            if (newItem && item.value) {
                 console.log('Item changed', newItem)
-                // Encrypt and save the item
-                await item.value?.encrypt(newItem, kpAPI.passphrase.value)
-                // Commit the profile
+                await item.value.encrypt(newItem, kpAPI.passphrase.value)
                 await kpAPI.commitProfileAsync()
             }
         },
