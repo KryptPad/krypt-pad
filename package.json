@@ -1,38 +1,38 @@
 {
-  "name": "krypt-pad",
-  "version": "0.1.0",
-  "private": false,
-  "description": "A secure note and password manager with AES-256 bit encryption.",
-  "author": "Neptune Century Studios",
-  "license": "MIT",
-  "main": "dist-electron/main.js",
-  "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc && vite build && electron-builder",
-    "preview": "vite preview",
-    "format": "prettier --write src/"
-  },
-  "dependencies": {
-    "@mdi/font": "^7.4.47",
-    "core-js": "^3.37.1",
-    "electron-window-state": "^5.0.3",
-    "qrcode": "^1.5.3",
-    "vue": "^3.4.31",
-    "vue-router": "^4.4.0",
-    "vuetify": "^3.6.12"
-  },
-  "devDependencies": {
-    "@types/qrcode": "^1.5.5",
-    "@vitejs/plugin-vue": "^5.0.5",
-    "electron": "^31.1.0",
-    "electron-builder": "^24.13.3",
-    "prettier": "^3.3.3",
-    "sass": "^1.76.0",
-    "typescript": "^5.4.5",
-    "vite": "^5.2.11",
-    "vite-plugin-electron": "^0.28.7",
-    "vite-plugin-electron-renderer": "^0.14.5",
-    "vite-plugin-node-polyfills": "^0.22.0",
-    "vue-tsc": "^2.0.26"
-  }
+    "name": "krypt-pad",
+    "version": "0.1.0",
+    "private": false,
+    "description": "A secure note and password manager with AES-256 bit encryption.",
+    "author": "Neptune Century Studios",
+    "license": "MIT",
+    "main": "dist-electron/main.js",
+    "scripts": {
+        "dev": "vite",
+        "build": "vue-tsc && vite build && electron-builder",
+        "preview": "vite preview",
+        "format": "prettier --write src/"
+    },
+    "dependencies": {
+        "@mdi/font": "^7.4.47",
+        "core-js": "^3.49.0",
+        "electron-window-state": "^5.0.3",
+        "qrcode": "^1.5.4",
+        "vue": "^3.5.39",
+        "vue-router": "^5.1.0",
+        "vuetify": "^3.6.12"
+    },
+    "devDependencies": {
+        "@types/qrcode": "^1.5.6",
+        "@vitejs/plugin-vue": "^6.0.8",
+        "electron": "^43.1.1",
+        "electron-builder": "^26.15.3",
+        "prettier": "^3.9.5",
+        "sass": "^1.101.0",
+        "typescript": "^7.0.2",
+        "vite": "^8.1.4",
+        "vite-plugin-electron": "^1.1.0",
+        "vite-plugin-electron-renderer": "^1.0.0",
+        "vite-plugin-node-polyfills": "^0.28.0",
+        "vue-tsc": "^3.3.7"
+    }
 }
