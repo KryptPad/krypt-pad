@@ -15,6 +15,21 @@ const FILE_SCRYPT_P = 1
 const FILE_SCRYPT_MAXMEM = 64 * 1024 * 1024
 
 /**
+ * Converts Node BinaryLike values to a Buffer.
+ */
+const toBuffer = (value: crypto.BinaryLike): Buffer => {
+    if (typeof value === 'string') {
+        return Buffer.from(value)
+    }
+
+    if (ArrayBuffer.isView(value)) {
+        return Buffer.from(value.buffer, value.byteOffset, value.byteLength)
+    }
+
+    return Buffer.from(value)
+}
+
+/**
  * Generates a secret key for whole-file encryption.
  * @param {crypto.BinaryLike} passphrase
  * @param {Buffer} salt
@@ -118,7 +133,7 @@ const encryptFilePayloadAsync = async (text: crypto.BinaryLike, passphrase: cryp
     const salt = crypto.randomBytes(SALT_LENGTH)
     const secretKey = await generateFileSecretKey(passphrase, salt)
     const iv = crypto.randomBytes(IV_LENGTH)
-    const plainText = typeof text === 'string' ? Buffer.from(text) : Buffer.from(text.buffer, text.byteOffset, text.byteLength)
+    const plainText = toBuffer(text)
     const header = createFileHeader(plainText.length)
     const cipher = crypto.createCipheriv(ALGORITHM, secretKey, iv)
 

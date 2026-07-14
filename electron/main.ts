@@ -49,7 +49,7 @@ let unlockedProfilePassphrase: string | null = null
 /**
  * Creates the main browser window
  */
-async function createWindow() {
+function createWindow() {
     let mainWindowState = windowStateKeeper({
         defaultWidth: 800,
         defaultHeight: 600
@@ -63,7 +63,7 @@ async function createWindow() {
         width: mainWindowState.width,
         height: mainWindowState.height,
         titleBarStyle: 'hidden',
-        frame: false,
+        //...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
         icon: path.join(process.env.VITE_PUBLIC, 'safe.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js')

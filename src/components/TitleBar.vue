@@ -101,6 +101,11 @@ $dark-button-hover-color: #555;
 $light-button-hover-color: #cccccc;
 $button-hover-close-color: #da2828;
 
+$dark-title-bar-text-color-focused: rgb(var(--v-theme-on-surface));
+$light-title-bar-text-color-focused: rgb(var(--v-theme-on-surface));
+$dark-title-bar-text-color-blur: #777777;
+$light-title-bar-text-color-blur: #aaaaaa;
+
 $transition: background-color 200ms ease-in-out;
 
 .title-bar {
@@ -125,10 +130,14 @@ $transition: background-color 200ms ease-in-out;
 
 /* Title bar buttons */
 .title-bar .title-bar-button {
+    border: none;
     -webkit-app-region: no-drag;
     width: 3rem;
+    height: $title-bar-height;
     cursor: default;
     transition: $transition;
+    background-color: transparent;
+    color: rgb(var(--v-theme-on-surface));
 }
 
 .title-bar .title-bar-button:hover {
@@ -150,24 +159,41 @@ $transition: background-color 200ms ease-in-out;
 
 .title-bar .title-bar-button i {
     font-size: 0.9rem;
-    height: $title-bar-height;
 }
 
 .v-theme--dark .title-bar {
     background-color: $dark-title-bar-blur-color;
-    color: rgb(var(--v-theme-on-surface));
+    color: $dark-title-bar-text-color-blur;
 }
 
 .v-theme--light .title-bar {
     background-color: $light-title-bar-blur-color;
-    color: rgb(var(--v-theme-on-surface));
+    color: $light-title-bar-text-color-blur;
+}
+
+.v-theme--dark .title-bar .title-bar-menu .v-btn {
+    color: $dark-title-bar-text-color-blur;
+}
+
+.v-theme--light .title-bar .title-bar-menu .v-btn {
+    color: $light-title-bar-text-color-blur;
 }
 
 .v-theme--dark .title-bar.focused {
     background-color: $dark-title-bar-focus-color;
+    color: $dark-title-bar-text-color-focused;
 }
 
 .v-theme--light .title-bar.focused {
     background-color: $light-title-bar-focus-color;
+    color: $light-title-bar-text-color-focused;
+}
+
+.v-theme--dark .title-bar.focused .title-bar-menu .v-btn {
+    color: $dark-title-bar-text-color-focused;
+}
+
+.v-theme--light .title-bar.focused .title-bar-menu .v-btn {
+    color: $light-title-bar-text-color-focused;
 }
 </style>
