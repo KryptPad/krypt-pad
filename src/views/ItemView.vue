@@ -1,11 +1,11 @@
 <template>
-    <v-main v-if="decryptedItem" :scrollable="true">
+    <v-main v-if="currentItem" :scrollable="true">
         <v-container class="d-flex flex-column h-100">
             <v-row class="flex-grow-0">
                 <v-col>
                     <v-text-field
-                        :model-value="decryptedItem.name"
-                        @change="decryptedItem.name = $event.target.value"
+                        :model-value="currentItem.name"
+                        @change="currentItem.name = $event.target.value"
                         type="text"
                         class="flex-grow-0"
                         label="card name"
@@ -15,7 +15,7 @@
                 </v-col>
                 <v-col>
                     <v-combobox
-                        v-model="decryptedItem.categoryId"
+                        v-model="currentItem.categoryId"
                         class="flex-grow-0"
                         label="category"
                         :items="categories"
@@ -28,8 +28,8 @@
 
             <div class="flex-fill d-flex mb-3">
                 <v-textarea
-                    :model-value="decryptedItem.notes"
-                    @change="decryptedItem.notes = $event.target.value"
+                    :model-value="currentItem.notes"
+                    @change="currentItem.notes = $event.target.value"
                     label="notes"
                     class="d-flex flex-column fill-height mr-3"
                     :hide-details="true"
@@ -48,9 +48,9 @@
                         </v-card-text>
                     </v-card>
 
-                    <v-card v-for="(_, index) in decryptedItem.fields" :key="index" class="mt-2">
+                    <v-card v-for="(_, index) in currentItem.fields" :key="index" class="mt-2">
                         <v-card-text>
-                            <name-value v-model="decryptedItem.fields[index]" @delete="onDeleteField"></name-value>
+                            <name-value v-model="currentItem.fields[index]" @delete="onDeleteField"></name-value>
                         </v-card-text>
                     </v-card>
                 </div>
@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { Item, Field, IDecryptedCategory, IDecryptedItem } from '@/krypt-pad-profile'
+import { Item, Field, IDecryptedCategory } from '@/krypt-pad-profile'
 import { ref, inject, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import NameValue from '@/components/NameValue.vue'
@@ -88,7 +88,7 @@ const isEditing = ref(false)
 const fieldName = ref<string | null>(null)
 const item = ref<Item>()
 
-const decryptedItem = ref<IDecryptedItem>()
+const currentItem = ref<Item>()
 const categories = ref<Array<IDecryptedCategory>>()
 
 let unwatch: (() => void) | null = null
@@ -110,10 +110,8 @@ function addField() {
     }
 
     isEditing.value = false
-    const newField = new Field()
-    newField.name = fieldName.value
-    newField.value = null
-    decryptedItem.value?.fields?.push(newField)
+    const newField = new Field(fieldName.value, null)
+    currentItem.value?.fields?.push(newField)
     fieldName.value = null
 }
 
@@ -122,7 +120,7 @@ function backHome() {
 }
 
 async function deleteItem() {
-    if (!kpAPI.profile.value || !decryptedItem.value) {
+    if (!kpAPI.profile.value || !currentItem.value) {
         return
     }
 
@@ -130,7 +128,7 @@ async function deleteItem() {
         return
     }
 
-    const index = kpAPI.profile.value.items.findIndex((i: Item) => i.id === decryptedItem.value?.id)
+    const index = kpAPI.profile.value.items.findIndex((i: Item) => i.id === currentItem.value?.id)
     if (index > -1) {
         kpAPI.profile.value.items.splice(index, 1)
         await kpAPI.commitProfileAsync()
@@ -139,7 +137,7 @@ async function deleteItem() {
 }
 
 async function onDeleteField(field: Field) {
-    if (!decryptedItem.value) {
+    if (!currentItem.value) {
         return
     }
 
@@ -147,9 +145,9 @@ async function onDeleteField(field: Field) {
         return
     }
 
-    const index = decryptedItem.value?.fields?.indexOf(field)
+    const index = currentItem.value?.fields?.indexOf(field)
     if (index !== undefined && index !== null && index > -1) {
-        decryptedItem.value?.fields?.splice(index, 1)
+        currentItem.value?.fields?.splice(index, 1)
     }
 }
 
@@ -158,7 +156,7 @@ async function initData() {
         return
     }
 
-    const profileCategories = await kpAPI.profile.value.getCategories(kpAPI.passphrase.value)
+    const profileCategories = await kpAPI.profile.value.getCategories()
     const defaultSelection: IDecryptedCategory = { id: undefined, name: 'None' }
     categories.value = [defaultSelection, ...profileCategories]
 
@@ -167,18 +165,17 @@ async function initData() {
         return
     }
 
-    decryptedItem.value = await item.value.decrypt(kpAPI.passphrase.value)
+    currentItem.value = item.value
 
     // Create a single watcher, tracked so it can be cleaned up
     if (unwatch) {
         unwatch()
     }
     unwatch = watch(
-        decryptedItem,
+        currentItem,
         async (newItem) => {
-            if (newItem && item.value) {
+            if (newItem) {
                 console.log('Item changed', newItem)
-                await item.value.encrypt(newItem, kpAPI.passphrase.value)
                 await kpAPI.commitProfileAsync()
             }
         },

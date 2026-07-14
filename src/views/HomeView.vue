@@ -29,7 +29,7 @@
 
                 <!-- User defined categories -->
                 <category-list-item
-                    v-for="(category) in categories"
+                    v-for="category in categories"
                     :name="category.name"
                     :key="category.id"
                     :active="selectedCategory === category"
@@ -83,7 +83,7 @@ import CategoryListItem from '@/components/CategoryListItem.vue'
 import { useRouter } from 'vue-router'
 import { computed } from 'vue'
 import KryptPadAPI from '@/krypt-pad-api'
-import { Category, Item, IDecryptedItem, IDecryptedCategory } from '@/krypt-pad-profile'
+import { Category, Item } from '@/krypt-pad-profile'
 
 const router = useRouter()
 
@@ -94,31 +94,29 @@ const kpAPI = inject<KryptPadAPI>('kpAPI')!
 kpAPI.redirectToStartWhenNoProfile()
 
 const isAdding = ref(false)
-const selectedCategory = ref<IDecryptedCategory | null>(null)
+const selectedCategory = ref<Category | null>(null)
 const showOnlyStarred = ref(false)
 const searchText = ref<string | null>(null)
 
-const categories = ref<Array<IDecryptedCategory>>([])
-const items = ref<Array<IDecryptedItem>>([])
+const categories = ref<Array<Category>>([])
+const items = ref<Array<Item>>([])
 
 // Computed
 const filteredItems = computed(() => {
-    const fi = items.value?.filter(
-        (item) => {
-            // Category / starred filter
-            if (selectedCategory.value && item.categoryId !== selectedCategory.value.id) {
-                return false
-            }
-            if (showOnlyStarred.value && !item.starred) {
-                return false
-            }
-            // Text search filter
-            if (searchText.value && !item.name?.toLowerCase().includes(searchText.value?.toLowerCase())) {
-                return false
-            }
-            return true
+    const fi = items.value?.filter((item) => {
+        // Category / starred filter
+        if (selectedCategory.value && item.categoryId !== selectedCategory.value.id) {
+            return false
         }
-    )
+        if (showOnlyStarred.value && !item.starred) {
+            return false
+        }
+        // Text search filter
+        if (searchText.value && !item.name?.toLowerCase().includes(searchText.value?.toLowerCase())) {
+            return false
+        }
+        return true
+    })
 
     return fi
 })
@@ -129,16 +127,14 @@ onActivated(async () => {
 })
 
 /**
- * Decrypts categories from the profile
+ * Gets categories from the unlocked profile
  */
 async function getCategories() {
-    categories.value = []
     if (!kpAPI.profile.value) {
+        categories.value = []
         return
     }
-    for (const category of kpAPI.profile.value.categories) {
-        categories.value.push(await category.decrypt(kpAPI.passphrase.value))
-    }
+    categories.value = kpAPI.profile.value.categories
 }
 
 /**
@@ -146,30 +142,19 @@ async function getCategories() {
  * @param title The title for the new category
  */
 async function addCategory(title: string) {
-    if (!kpAPI.passphrase.value) {
-        return
-    }
-
     const category = new Category(undefined)
-    const categoryData: IDecryptedCategory = {
-        id: category.id,
-        name: title
-    }
-
-    await category.encrypt(categoryData, kpAPI.passphrase.value)
+    category.name = title
 
     // Add the category to the profile
     kpAPI.profile.value?.categories.push(category)
     // Commit the profile
     await kpAPI.commitProfileAsync()
-    // Add the decrypted category to the list
-    categories.value.push(categoryData)
 }
 
 /**
  * Gets the category for an item
  */
-function getCategory(item: IDecryptedItem): IDecryptedCategory | undefined {
+function getCategory(item: Item): Category | undefined {
     const category = categories.value.find((c) => c.id === item.categoryId)
     return category
 }
@@ -179,7 +164,7 @@ function getCategory(item: IDecryptedItem): IDecryptedCategory | undefined {
  * @param category The category that was selected or null for all items
  * @param starred Whether to show starred items only
  */
-function categorySelected(category: IDecryptedCategory | null, starred?: boolean) {
+function categorySelected(category: Category | null, starred?: boolean) {
     selectedCategory.value = category
     showOnlyStarred.value = starred ?? false
 }
@@ -187,20 +172,20 @@ function categorySelected(category: IDecryptedCategory | null, starred?: boolean
 /**
  * Updates a category's title
  */
-async function categoryUpdated(category: IDecryptedCategory, title: string) {
+async function categoryUpdated(category: Category, title: string) {
     const c = kpAPI.profile.value?.categories.find((c) => c.id === category.id)
     category.name = title
-    await c?.encrypt(category, kpAPI.passphrase.value)
+    if (c) {
+        c.name = title
+    }
     await kpAPI.commitProfileAsync()
 }
 
 /**
  * Deletes a category
  */
-async function onDeleteCategory(category: IDecryptedCategory) {
-    await kpAPI.deleteCategory(
-        kpAPI.profile.value?.categories.find((c) => c.id === category.id) as Category
-    )
+async function onDeleteCategory(category: Category) {
+    await kpAPI.deleteCategory(kpAPI.profile.value?.categories.find((c) => c.id === category.id) as Category)
     await getCategories()
     await getItems()
     // Deselect if it was selected
@@ -214,28 +199,21 @@ async function onDeleteCategory(category: IDecryptedCategory) {
  */
 async function addItemAsync() {
     const item = new Item(undefined)
-
-    const itemData: IDecryptedItem = {
-        id: item.id,
-        name: 'Untitled',
-        starred: false,
-        categoryId: selectedCategory.value?.id,
-        notes: undefined,
-        fields: []
-    }
-
-    await item.encrypt(itemData, kpAPI.passphrase.value)
+    item.name = 'Untitled'
+    item.starred = false
+    item.categoryId = selectedCategory.value?.id
+    item.notes = undefined
+    item.fields = []
 
     kpAPI.profile.value?.items.push(item)
     await kpAPI.commitProfileAsync()
-    items.value?.push(itemData)
-    itemSelected(itemData)
+    itemSelected(item)
 }
 
 /**
  * Toggles the starred state of an item
  */
-function toggleStarred(itemData: IDecryptedItem) {
+function toggleStarred(itemData: Item) {
     itemData.starred = !itemData.starred
     const item = kpAPI.profile.value?.items.find((it) => it.id === itemData.id)
     if (!item) {
@@ -248,17 +226,14 @@ function toggleStarred(itemData: IDecryptedItem) {
 /**
  * Handles when an item is selected from the list
  */
-function itemSelected(item: IDecryptedItem) {
+function itemSelected(item: Item) {
     router.push({ name: 'item', params: { id: item.id } })
 }
 
 /**
- * Gets the items from the profile and decrypts them
+ * Gets the items from the unlocked profile
  */
 async function getItems() {
-    items.value = []
-    for (const item of kpAPI.profile.value?.items ?? []) {
-        items.value?.push(await item.decrypt(kpAPI.passphrase.value))
-    }
+    items.value = kpAPI.profile.value?.items ?? []
 }
 </script>

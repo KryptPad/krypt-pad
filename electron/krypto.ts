@@ -1,102 +1,169 @@
-import crypto from 'crypto';
-import {KryptPadErrorCodes, KryptPadError} from '../common/error-utils';
+import crypto from 'crypto'
+import { KryptPadErrorCodes, KryptPadError } from '../common/error-utils'
 
-const ALGORITHM = 'aes-256-gcm';
-const KEY_ALGORITHM = 'sha256';
-const IV_LENGTH = 12;
-const SALT_LENGTH = 32;
-const KEY_LENGTH = 32;
-const ITERATIONS = 100000;
+const ALGORITHM = 'aes-256-gcm'
+const IV_LENGTH = 12
+const SALT_LENGTH = 32
+const KEY_LENGTH = 32
+const FILE_MAGIC = Buffer.from('KPF2')
+const FILE_VERSION = 1
+const AUTH_TAG_LENGTH = 16
+const FILE_HEADER_LENGTH = 28
+const FILE_SCRYPT_N = 32768
+const FILE_SCRYPT_R = 8
+const FILE_SCRYPT_P = 1
+const FILE_SCRYPT_MAXMEM = 64 * 1024 * 1024
 
 /**
- * Generates an encryption key from a passphrase and a salt.
- * @param {crypto.BinaryLike} passphrase 
- * @param {crypto.BinaryLike} salt 
- * @returns {Buffer} the secret key
+ * Generates a secret key for whole-file encryption.
+ * @param {crypto.BinaryLike} passphrase
+ * @param {Buffer} salt
+ * @returns {Promise<Buffer>} the secret key
  */
-const generateSecretKey = function (passphrase: crypto.BinaryLike, salt: crypto.BinaryLike): Promise<Buffer> {
+const generateFileSecretKey = function (passphrase: crypto.BinaryLike, salt: Buffer): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-        // Generate a derived key from a passphrase, salt, # of iterations. DO NOT USE THE SYNC version of this
-        // function. It is extremely slow.
-        crypto.pbkdf2(passphrase, salt, ITERATIONS, KEY_LENGTH, KEY_ALGORITHM, (err, secretKey) => {
-            if (!err) {
-                resolve(secretKey);
-
-            } else {
-                reject(err);
-
+        crypto.scrypt(
+            passphrase,
+            salt,
+            KEY_LENGTH,
+            {
+                N: FILE_SCRYPT_N,
+                r: FILE_SCRYPT_R,
+                p: FILE_SCRYPT_P,
+                maxmem: FILE_SCRYPT_MAXMEM
+            },
+            (err, secretKey) => {
+                if (!err) {
+                    resolve(secretKey as Buffer)
+                } else {
+                    reject(err)
+                }
             }
-
-        });
-
-    });
+        )
+    })
 }
 
 /**
- * Encrypts data with a key generated from a passphrase
- * @param {crypto.BinaryLike} text 
- * @param {crypto.BinaryLike} passphrase 
- * @returns 
+ * Creates the authenticated file header for whole-file encryption.
+ * @param {number} contentLength
+ * @returns {Buffer}
  */
-const encryptAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLike): Promise<string> => {
-    // Create a random 32 byte salt
-    const salt = crypto.randomBytes(SALT_LENGTH);
-    // Generate a derived key from a passphrase, salt, # of iterations
-    const secretKey = await generateSecretKey(passphrase, salt);
-    // Generate a random initialization vector for our first encryption block
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, secretKey, iv);
-    // Encrypt the data
-    const content = Buffer.concat([cipher.update(text), cipher.final()]);
-    // Determine the length of the encrypted data and store it with the cipher text so we know where the
-    // auth tag starts.
-    const contentLength = Buffer.allocUnsafe(4);
-    contentLength.writeUInt32LE(content.length);
+const createFileHeader = function (contentLength: number): Buffer {
+    const header = Buffer.allocUnsafe(FILE_HEADER_LENGTH)
+    FILE_MAGIC.copy(header, 0)
+    header.writeUInt8(FILE_VERSION, 4)
+    header.writeUInt8(SALT_LENGTH, 5)
+    header.writeUInt8(IV_LENGTH, 6)
+    header.writeUInt8(AUTH_TAG_LENGTH, 7)
+    header.writeUInt32LE(FILE_SCRYPT_N, 8)
+    header.writeUInt32LE(FILE_SCRYPT_R, 12)
+    header.writeUInt32LE(FILE_SCRYPT_P, 16)
+    header.writeUInt32LE(KEY_LENGTH, 20)
+    header.writeUInt32LE(contentLength, 24)
 
-    // Write to the buffer
-    const encrypted = Buffer.concat([salt, iv, contentLength, content, cipher.getAuthTag()]);
-
-    return encrypted.toString('base64');
-};
+    return header
+}
 
 /**
- * Decrypts data with a salt, passphrase, and iv.
- * @param {*} cipherData 
- * @param {*} passphrase 
- * @returns 
+ * Validates and parses the whole-file encryption header.
+ * @param {Buffer} cipherData
+ * @returns parsed header info
  */
-const decryptAsync = async (cipherData: string, passphrase: crypto.BinaryLike): Promise<string> => {
-    const cipherDataBuffer = Buffer.from(cipherData, 'base64');
-    // Get some prepended data like salt and iv
-    const salt = Buffer.from(cipherDataBuffer.subarray(0, SALT_LENGTH));
-    // Generate the secret key from the salt and passphrase
-    const secretKey = await generateSecretKey(passphrase, salt);
-
-    // Get the IV
-    const iv = Buffer.from(cipherDataBuffer.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH));
-    // Get the rest of the message to decrypt. But first, get the length of the content. This is determined by an
-    // 8 bit uint prepended to the content
-    const contentLength = Buffer.from(cipherDataBuffer.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + 4)).readUInt32LE();
-    const content = Buffer.from(cipherDataBuffer.subarray(SALT_LENGTH + IV_LENGTH + 4, SALT_LENGTH + IV_LENGTH + 4 + contentLength));
-    // Get the auth tag at the end
-    const authTag = Buffer.from(cipherDataBuffer.subarray(SALT_LENGTH + IV_LENGTH + 4 + contentLength));
-
-    // Create a decipher object for aes 256, the secret key, and the iv.
-    const decipher = crypto.createDecipheriv(ALGORITHM, secretKey, iv);
-    // Set the auth tag
-    decipher.setAuthTag(authTag);
-
-    try {
-        // Decrypt the data and concat the final block to the output buffer
-        const decrpyted = Buffer.concat([decipher.update(content), decipher.final()]);
-        return decrpyted.toString();
-
-    } catch (ex) {
-        throw new KryptPadError('Could not decrypt the data. Please check the passphrase and try again.', KryptPadErrorCodes.DECRYPT_ERROR);
-        
+const parseFileHeader = function (cipherData: Buffer) {
+    if (cipherData.length < FILE_HEADER_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH) {
+        throw new KryptPadError('The file is invalid or corrupted.', KryptPadErrorCodes.DECRYPT_ERROR)
     }
 
+    const magic = cipherData.subarray(0, 4)
+    if (!magic.equals(FILE_MAGIC)) {
+        throw new KryptPadError('The file format is invalid or unsupported.', KryptPadErrorCodes.DECRYPT_ERROR)
+    }
 
+    const version = cipherData.readUInt8(4)
+    if (version !== FILE_VERSION) {
+        throw new KryptPadError('The file format version is unsupported.', KryptPadErrorCodes.DECRYPT_ERROR)
+    }
+
+    const saltLength = cipherData.readUInt8(5)
+    const ivLength = cipherData.readUInt8(6)
+    const authTagLength = cipherData.readUInt8(7)
+    const keyLength = cipherData.readUInt32LE(20)
+    const contentLength = cipherData.readUInt32LE(24)
+
+    if (saltLength !== SALT_LENGTH || ivLength !== IV_LENGTH || authTagLength !== AUTH_TAG_LENGTH || keyLength !== KEY_LENGTH) {
+        throw new KryptPadError('The file encryption parameters are invalid.', KryptPadErrorCodes.DECRYPT_ERROR)
+    }
+
+    const expectedLength = FILE_HEADER_LENGTH + saltLength + ivLength + contentLength + authTagLength
+    if (cipherData.length !== expectedLength) {
+        throw new KryptPadError('The file is truncated or corrupted.', KryptPadErrorCodes.DECRYPT_ERROR)
+    }
+
+    return {
+        headerLength: FILE_HEADER_LENGTH,
+        saltLength,
+        ivLength,
+        authTagLength,
+        contentLength
+    }
 }
 
-export { encryptAsync, decryptAsync }
+/**
+ * Encrypts the full file payload into a versioned binary envelope.
+ * @param {crypto.BinaryLike} text
+ * @param {crypto.BinaryLike} passphrase
+ * @returns {Promise<Buffer>} encrypted file payload
+ */
+const encryptFilePayloadAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLike): Promise<Buffer> => {
+    const salt = crypto.randomBytes(SALT_LENGTH)
+    const secretKey = await generateFileSecretKey(passphrase, salt)
+    const iv = crypto.randomBytes(IV_LENGTH)
+    const plainText = typeof text === 'string' ? Buffer.from(text) : Buffer.from(text.buffer, text.byteOffset, text.byteLength)
+    const header = createFileHeader(plainText.length)
+    const cipher = crypto.createCipheriv(ALGORITHM, secretKey, iv)
+
+    cipher.setAAD(header)
+
+    const content = Buffer.concat([cipher.update(plainText), cipher.final()])
+
+    const encrypted = Buffer.concat([header, salt, iv, content, cipher.getAuthTag()])
+    secretKey.fill(0)
+
+    return encrypted
+}
+
+/**
+ * Decrypts the full file payload from a versioned binary envelope.
+ * @param {Buffer} cipherData
+ * @param {crypto.BinaryLike} passphrase
+ * @returns {Promise<string>} decrypted file payload
+ */
+const decryptFilePayloadAsync = async (cipherData: Buffer, passphrase: crypto.BinaryLike): Promise<string> => {
+    const { headerLength, saltLength, ivLength, authTagLength, contentLength } = parseFileHeader(cipherData)
+    const saltOffset = headerLength
+    const ivOffset = saltOffset + saltLength
+    const contentOffset = ivOffset + ivLength
+    const authTagOffset = contentOffset + contentLength
+
+    const header = Buffer.from(cipherData.subarray(0, headerLength))
+    const salt = Buffer.from(cipherData.subarray(saltOffset, ivOffset))
+    const secretKey = await generateFileSecretKey(passphrase, salt)
+    const iv = Buffer.from(cipherData.subarray(ivOffset, contentOffset))
+    const content = Buffer.from(cipherData.subarray(contentOffset, authTagOffset))
+    const authTag = Buffer.from(cipherData.subarray(authTagOffset, authTagOffset + authTagLength))
+
+    const decipher = crypto.createDecipheriv(ALGORITHM, secretKey, iv)
+    decipher.setAAD(header)
+    decipher.setAuthTag(authTag)
+
+    try {
+        const decrypted = Buffer.concat([decipher.update(content), decipher.final()])
+        secretKey.fill(0)
+        return decrypted.toString()
+    } catch (ex) {
+        secretKey.fill(0)
+        throw new KryptPadError('Could not open the file. Please check the passphrase and try again.', KryptPadErrorCodes.DECRYPT_ERROR)
+    }
+}
+
+export { encryptFilePayloadAsync, decryptFilePayloadAsync }

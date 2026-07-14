@@ -15,7 +15,7 @@
             </template>
 
             <v-list>
-                <v-list-item prepend-icon="mdi-rename" value="rename" @click="isEditing = true">
+                <v-list-item prepend-icon="mdi-rename" value="rename" @click="startEdit">
                     <v-list-item-title>Rename</v-list-item-title>
                 </v-list-item>
 
@@ -28,9 +28,9 @@
 
     <!-- In edit mode, the field's name can be edited -->
     <template v-else>
-        <v-text-field v-model="internalField.name" label="name" placeholder="e.g. password" @keypress.enter="saveField" autofocus></v-text-field>
+        <v-text-field v-model="draftFieldName" label="name" placeholder="e.g. password" @keypress.enter="saveField" autofocus></v-text-field>
         <v-btn color="primary" icon="mdi-check" class="mr-3" @click="saveField"></v-btn>
-        <v-btn icon="mdi-close" @click="isEditing = false"></v-btn>
+        <v-btn icon="mdi-close" @click="cancelEdit"></v-btn>
     </template>
 </template>
 
@@ -45,13 +45,25 @@ const props = defineProps({
 const emit = defineEmits(['delete', 'update:modelValue'])
 
 const isEditing = ref(false)
+const draftFieldName = ref('')
 const { modelValue: internalField } = toRefs(props)
 
 // Event handler
 function saveField() {
+    internalField.value.name = draftFieldName.value
     emit('update:modelValue', internalField.value)
 
     isEditing.value = false
+}
+
+function cancelEdit() {
+    draftFieldName.value = internalField.value.name
+    isEditing.value = false
+}
+
+function startEdit() {
+    draftFieldName.value = internalField.value.name
+    isEditing.value = true
 }
 
 function onValueChange(ev: Event) {

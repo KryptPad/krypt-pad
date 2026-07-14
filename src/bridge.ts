@@ -6,7 +6,7 @@ import { SettingsManager } from './app-settings'
  * New experimental bridge using ipcRenderer directly
  */
 class IPCBridge {
-    ipcRenderer = window.ipcRenderer
+    desktopApi = window.kryptPad
 
     constructor() {}
 
@@ -16,8 +16,8 @@ class IPCBridge {
      * @param passphrase The decryption passphrase
      * @returns A string containing the decrypted data
      */
-    async readFile(fileName: string): Promise<string | undefined> {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('read-file', fileName)
+    async openProfile(fileName: string, passphrase: string): Promise<string | undefined> {
+        const response = <IPCData<string>>await this.desktopApi.openProfile(fileName, passphrase)
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error)
@@ -32,60 +32,28 @@ class IPCBridge {
      * @param {*} plainText
      * @returns
      */
-    async writeFile(fileName: string, profileData: string): Promise<void> {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('write-file', fileName, profileData)
+    async saveProfile(fileName: string, profileData: string): Promise<void> {
+        const response = <IPCData<string>>await this.desktopApi.saveProfile(fileName, profileData)
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error)
         }
     }
 
-    /**
-     * Encrypts data using the passphrase
-     * @param data The data to encrypt
-     * @param passphrase Passphrase to use for encryption
-     * @returns A Buffer containing the encrypted data
-     */
-    async encryptData(data: string | undefined, passphrase: string | undefined): Promise<string | undefined> {
-        if (!data) {
-            return undefined
-        }
-
-        if (!passphrase) {
-            throw new Error('Passphrase is required to encrypt data.')
-        }
-
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('encrypt', data, passphrase)
+    async setSessionPassphrase(passphrase: string): Promise<void> {
+        const response = <IPCData<string>>await this.desktopApi.setSessionPassphrase(passphrase)
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error)
         }
-
-        return response.data
     }
 
-    /**
-     * Decrypts data using the passphrase
-     * @param data The data to decrypt
-     * @param passphrase Passphrase to use for decryption
-     * @returns A string containing the decrypted data
-     */
-    async decryptData(data: string | undefined, passphrase: string | undefined): Promise<string | undefined> {
-        if (!data) {
-            return undefined
-        }
+    async lockProfile(): Promise<void> {
+        await this.desktopApi.lockProfile()
+    }
 
-        if (!passphrase) {
-            throw new Error('Passphrase is required to decrypt data.')
-        }
-
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('decrypt', data, passphrase)
-        if (response.error) {
-            // Throw the error
-            throw KryptPadError.fromError(response.error)
-        }
-
-        return response.data
+    onAppEvent(channel: KryptPadEventChannel, listener: (...args: any[]) => void) {
+        this.desktopApi.onAppEvent(channel, listener)
     }
 
     /**
@@ -93,13 +61,11 @@ class IPCBridge {
      * @param config An AppSettings object to save
      */
     async saveConfigFile(config: SettingsManager) {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('save-config', config.toString())
+        const response = <IPCData<string>>await this.desktopApi.saveConfig(config.toString())
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error)
         }
-
-        console.info('Configuration file written successfully.')
     }
 
     /**
@@ -107,7 +73,7 @@ class IPCBridge {
      * @returns the user's application settings
      */
     async loadConfigFile(): Promise<SettingsManager | undefined> {
-        const response = <IPCData<string>>await this.ipcRenderer.invoke('load-config')
+        const response = <IPCData<string>>await this.desktopApi.loadConfig()
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error)
@@ -126,7 +92,7 @@ class IPCBridge {
      */
     async showOpenFileDialogAsync(): Promise<Electron.OpenDialogReturnValue> {
         // Send message to main process to open the dialog.
-        return <Electron.OpenDialogReturnValue>await this.ipcRenderer.invoke('show-open-file-dialog')
+        return <Electron.OpenDialogReturnValue>await this.desktopApi.showOpenFileDialog()
     }
 
     /**
@@ -135,7 +101,7 @@ class IPCBridge {
      */
     async showSaveFileDialogAsync(): Promise<Electron.SaveDialogReturnValue> {
         // Send message to main process to open the dialog.
-        return <Electron.SaveDialogReturnValue>await this.ipcRenderer.invoke('show-save-file-dialog')
+        return <Electron.SaveDialogReturnValue>await this.desktopApi.showSaveFileDialog()
     }
 
     /**
@@ -143,33 +109,33 @@ class IPCBridge {
      * @returns Promise<any>
      */
     async getIsMaximized() {
-        return await this.ipcRenderer.invoke('is-maximized')
+        return await this.desktopApi.getIsMaximized()
     }
 
     /**
      * Toggles the window maximize and restore
      */
     toggleMaximizeRestore() {
-        this.ipcRenderer.send('toggle-maximize-restore')
+        this.desktopApi.toggleMaximizeRestore()
     }
 
     /**
      * Minimizes the window
      */
     minimize() {
-        this.ipcRenderer.send('minimize')
+        this.desktopApi.minimize()
     }
 
     /**
      * Closes the app
      */
     close() {
-        this.ipcRenderer.send('close')
+        this.desktopApi.close()
     }
 
     // invoke get-platform
     async getPlatform(): Promise<string> {
-        return await this.ipcRenderer.invoke('get-platform')
+        return await this.desktopApi.getPlatform()
     }
 }
 

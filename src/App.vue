@@ -165,7 +165,7 @@ const windowInfo = computed(() => {
 })
 
 // Register shortcut handler
-kpAPI.ipcBridge.ipcRenderer.on('handle-shortcut', async (_, args) => {
+kpAPI.ipcBridge.onAppEvent('handle-shortcut', async (args) => {
     switch (args) {
         case SHORTCUT_NEW:
             await kpAPI.createNewFileAsync()

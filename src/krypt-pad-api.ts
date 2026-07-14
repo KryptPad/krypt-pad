@@ -12,7 +12,6 @@ class KryptPadAPI {
     fileOpened = ref(false)
     fileName = ref<string | undefined>()
     profile = ref<Profile | null>(null)
-    passphrase = ref<string | undefined>()
     router: Router | null = null
     route: RouteLocationNormalizedLoaded | null = null
     confirmDialog: Ref<InstanceType<typeof ConfirmDialog> | null> | null = null
@@ -62,57 +61,6 @@ class KryptPadAPI {
         }
     }
 
-    // /**
-    //  * Encrypts the data using the passphrase
-    //  * @param {string} data The data to encrypt
-    //  * @returns
-    //  */
-    // async encryptData(data: string): Promise<string | undefined> {
-    //     if (!this.passphrase.value) {
-    //         throw new Error('Passphrase is required to encrypt data.')
-    //     }
-
-    //     console.info('Encrypting data...', data)
-
-    //     return await this.ipcBridge.encryptData(data, this.passphrase.value)
-    // }
-
-    // /**
-    //  * Decrypts the data using the passphrase
-    //  * @param {string} data The data to decrypt
-    //  * @returns
-    //  */
-    // async decryptData(data: string): Promise<string | undefined> {
-    //     console.info('Decrypting data...', data)
-    //     let attempts = 0
-    //     while (attempts < 3) {
-    //         // Prompt for passphrase to decrypt the file
-    //         this.passphrase.value = await this._requirePassphraseCallback?.(false)
-    //         if (!this.passphrase.value || !this.fileName.value) {
-    //             break
-    //         }
-
-    //         try {
-    //             // Decrypt the data
-    //             return await this.ipcBridge.decryptData(data, this.passphrase.value)
-    //         } catch (ex) {
-    //             const err = getExceptionMessage(ex)
-    //             console.error(err, ex)
-
-    //             // Display alert
-    //             await this.alertDialog?.value?.error(err)
-
-    //             // Check if this is a decryption error. If so, increase attempt count.
-    //             if (ex instanceof KryptPadError && ex.code === KryptPadErrorCodes.DECRYPT_ERROR) {
-    //                 attempts++
-    //             } else {
-    //                 // This is not a decryption attempt error, break now.
-    //                 break
-    //             }
-    //         }
-    //     }
-    // }
-
     /**
      * Opens an existing file
      */
@@ -134,17 +82,17 @@ class KryptPadAPI {
 
         while (attempts < 3) {
             // Prompt for passphrase to decrypt the file
-            this.passphrase.value = await this._requirePassphraseCallback?.(false)
-            if (!this.passphrase.value || !this.fileName.value) {
+            const passphrase = await this._requirePassphraseCallback?.(false)
+            if (!passphrase || !this.fileName.value) {
                 break
             }
 
             try {
                 // Read the file and get the data
-                const data = await this.ipcBridge.readFile(this.fileName.value)
+                const data = await this.ipcBridge.openProfile(this.fileName.value, passphrase)
                 if (data) {
                     // Load the profile
-                    const p = await Profile.from(data, this.passphrase.value)
+                    const p = await Profile.from(data)
                     if (p) {
                         const rp = reactive(p)
                         this.profile.value = rp
@@ -197,10 +145,12 @@ class KryptPadAPI {
         this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf')
 
         // Prompt for new passphrase
-        this.passphrase.value = await this._requirePassphraseCallback?.(true)
-        if (!this.passphrase.value) {
+        const passphrase = await this._requirePassphraseCallback?.(true)
+        if (!passphrase) {
             throw new Error('Passphrase is required to create a new profile.')
         }
+
+        await this.ipcBridge.setSessionPassphrase(passphrase)
 
         // Set fileOpen flag
         this.fileOpened.value = true
@@ -229,7 +179,12 @@ class KryptPadAPI {
         this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf')
 
         // Prompt for new passphrase
-        this.passphrase.value = await this._requirePassphraseCallback?.(true)
+        const passphrase = await this._requirePassphraseCallback?.(true)
+        if (!passphrase) {
+            return
+        }
+
+        await this.ipcBridge.setSessionPassphrase(passphrase)
 
         // Commit the file once after creation
         await this.commitProfileAsync()
@@ -239,7 +194,7 @@ class KryptPadAPI {
      * Closes the currently open file
      */
     closeFile = () => {
-        this.passphrase.value = undefined
+        void this.ipcBridge.lockProfile()
         this.profile.value = null
         this.fileOpened.value = false
 
@@ -253,8 +208,8 @@ class KryptPadAPI {
     commitProfileAsync = async () => {
         console.info(`Writing changes to file '${this.fileName.value}'`)
 
-        // Encrypt the profile. But first, make sure we have a filename and a passphrase
-        if (this.fileName.value && this.passphrase.value && !this.saving.value) {
+        // Encrypt the profile. But first, make sure we have a filename.
+        if (this.fileName.value && !this.saving.value) {
             this.saving.value = true
             // Keep the user session alive
             this._resetTimeoutCallback?.()
@@ -266,7 +221,7 @@ class KryptPadAPI {
                 }
 
                 // Write a file containig the encrypted data
-                await this.ipcBridge.writeFile(this.fileName.value, plainText)
+                await this.ipcBridge.saveProfile(this.fileName.value, plainText)
                 console.info('Changes written to file.')
             } catch (ex) {
                 const err = getExceptionMessage(ex)

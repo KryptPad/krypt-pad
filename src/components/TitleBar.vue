@@ -32,7 +32,7 @@ import KryptPadAPI from '@/krypt-pad-api'
 
 // Use the IPC renderer instance in the KP API
 const kpAPI = inject<KryptPadAPI>('kpAPI')!
-    const platform = inject<string>('platform')!
+const platform = inject<string>('platform')!
 
 // Define our reactive properties
 const isMaximized = ref(false)
@@ -66,21 +66,21 @@ function close() {
 
 // When the window is unmaximized, an event in the main process is raised that sends a message
 // via IPC. This handler processes that message and raises a registered callback from the vue app.
-kpAPI.ipcBridge.ipcRenderer.on('unmaximize', () => {
+kpAPI.ipcBridge.onAppEvent('unmaximize', () => {
     isMaximized.value = false
 })
 
 // When the window is maximized, an event in the main process is raised that sends a message
 // via IPC. This handler processes that message and raises a registered callback from the vue app.
-kpAPI.ipcBridge.ipcRenderer.on('maximize', () => {
+kpAPI.ipcBridge.onAppEvent('maximize', () => {
     isMaximized.value = true
 })
 
-kpAPI.ipcBridge.ipcRenderer.on('blur', () => {
+kpAPI.ipcBridge.onAppEvent('blur', () => {
     isFocused.value = false
 })
 
-kpAPI.ipcBridge.ipcRenderer.on('focus', () => {
+kpAPI.ipcBridge.onAppEvent('focus', () => {
     isFocused.value = true
 })
 

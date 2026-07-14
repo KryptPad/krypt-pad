@@ -6,7 +6,7 @@ import path from 'node:path'
 import windowStateKeeper from 'electron-window-state'
 import { writeFile, readFile } from 'fs/promises'
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts'
-import { decryptAsync, encryptAsync } from './krypto'
+import { decryptFilePayloadAsync, encryptFilePayloadAsync } from './krypto'
 import { IPCData } from './ipc.ts'
 import { KryptPadError } from '../common/error-utils'
 
@@ -28,7 +28,7 @@ process.env.DIST = path.join(__dirname, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
 // Log the platform
-console.log("Platform detected as " + process.platform)
+console.log('Platform detected as ' + process.platform)
 
 let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
@@ -44,6 +44,7 @@ const filters: Electron.FileFilter[] = [
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: true, standard: true } }])
 
 const menu = new Menu()
+let unlockedProfilePassphrase: string | null = null
 
 /**
  * Creates the main browser window
@@ -56,7 +57,7 @@ async function createWindow() {
 
     // Create the browser window.
     win = new BrowserWindow({
-        title: "Krypt Pad",
+        title: 'Krypt Pad',
         x: mainWindowState.x,
         y: mainWindowState.y,
         width: mainWindowState.width,
@@ -113,7 +114,6 @@ async function createWindow() {
 // Create menu structure
 menu.append(
     new MenuItem({
-        
         label: 'File',
         submenu: [
             {
@@ -140,7 +140,6 @@ menu.append(
                     win?.webContents.send('handle-shortcut', SHORTCUT_CLOSE)
                 }
             }
-            
         ]
     })
 )
@@ -230,46 +229,14 @@ app.whenReady().then(async () => {
         return await dialog.showSaveDialog(win, options)
     })
 
-    // Handle message to encrypt data
-    ipcMain.handle('encrypt', async (_, plainText: string, passphrase: string) => {
-        const ipcData: IPCData<string> = {}
-
-        try {
-            // Encrypt the data
-            ipcData.data = await encryptAsync(plainText, passphrase)
-        } catch (ex) {
-            ipcData.error = KryptPadError.fromError(ex)
-
-            console.error(ipcData.error)
-        }
-
-        return ipcData
-    })
-
-    // Handle message to decrypt data
-    ipcMain.handle('decrypt', async (_, encryptedData: string, passphrase: string) => {
-        const ipcData: IPCData<string> = {}
-
-        try {
-            // Decrypt the data
-            ipcData.data = await decryptAsync(encryptedData, passphrase)
-        } catch (ex) {
-            ipcData.error = KryptPadError.fromError(ex)
-
-            console.error(ipcData.error)
-        }
-
-        return ipcData
-    })
-
-    // Listens to the read-file message and opens the file. The file is read and the contents
-    // are sent to the renderer process.
-    ipcMain.handle('read-file', async (_, fileName: string) => {
+    ipcMain.handle('open-profile', async (_, fileName: string, passphrase: string) => {
         const ipcData: IPCData<string> = {}
 
         try {
             // Open the file for reading
-            ipcData.data = (await readFile(fileName))?.toString()
+            const encryptedData = await readFile(fileName)
+            ipcData.data = await decryptFilePayloadAsync(encryptedData, passphrase)
+            unlockedProfilePassphrase = passphrase
         } catch (ex) {
             ipcData.error = KryptPadError.fromError(ex)
 
@@ -279,13 +246,17 @@ app.whenReady().then(async () => {
         return ipcData
     })
 
-    // Listen to the message to write the contents to the file
-    ipcMain.handle('write-file', async (_, fileName: string, profileData: string) => {
+    ipcMain.handle('save-profile', async (_, fileName: string, profileData: string) => {
         const ipcData: IPCData<string> = {}
 
         try {
+            if (!unlockedProfilePassphrase) {
+                throw new Error('No unlocked profile session is active.')
+            }
+
             // Open file for writing
-            await writeFile(fileName, profileData)
+            const encryptedData = await encryptFilePayloadAsync(profileData, unlockedProfilePassphrase)
+            await writeFile(fileName, new Uint8Array(encryptedData))
         } catch (ex) {
             ipcData.error = KryptPadError.fromError(ex)
 
@@ -293,6 +264,28 @@ app.whenReady().then(async () => {
         }
 
         return ipcData
+    })
+
+    ipcMain.handle('set-session-passphrase', async (_, passphrase: string) => {
+        const ipcData: IPCData<string> = {}
+
+        try {
+            if (!passphrase) {
+                throw new Error('Passphrase is required.')
+            }
+
+            unlockedProfilePassphrase = passphrase
+        } catch (ex) {
+            ipcData.error = KryptPadError.fromError(ex)
+
+            console.error(ipcData.error)
+        }
+
+        return ipcData
+    })
+
+    ipcMain.handle('lock-profile', async () => {
+        unlockedProfilePassphrase = null
     })
 
     // Handles saving the application configuration
