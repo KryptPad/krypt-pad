@@ -32,7 +32,6 @@
         "vite": "^8.1.4",
         "vite-plugin-electron": "^1.1.0",
         "vite-plugin-electron-renderer": "^1.0.0",
-        "vite-plugin-node-polyfills": "^0.28.0",
         "vue-tsc": "^3.3.7"
     }
 }
