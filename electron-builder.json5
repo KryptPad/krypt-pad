@@ -14,10 +14,25 @@
     "dist-electron"
   ],
   "mac": {
+    "icon": "public/safe.icns",
+    "category": "public.app-category.utilities",
+    "identity": null,
     "target": [
-      "dmg"
+      "dmg",
+      "zip"
     ],
     "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+  },
+  "dmg": {
+    "title": "Krypt Pad ${version}",
+    "window": {
+      "width": 540,
+      "height": 400
+    },
+    "contents": [
+      { "x": 160, "y": 200, "type": "file" },
+      { "x": 380, "y": 200, "type": "link", "path": "/Applications" }
+    ]
   },
   "win": {
     "icon": "public/safe.ico",

@@ -1,6 +1,6 @@
 <template>
     <v-main v-if="currentItem" :scrollable="true">
-        <v-container class="d-flex flex-column h-100">
+        <v-container class="d-flex flex-column h-100" max-width="none">
             <v-row class="flex-grow-0">
                 <v-col>
                     <v-text-field

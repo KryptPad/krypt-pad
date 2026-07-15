@@ -10,6 +10,9 @@ import { decryptFilePayloadAsync, encryptFilePayloadAsync } from './krypto'
 import { IPCData } from './ipc.ts'
 import { KryptPadError } from '../common/error-utils'
 
+// Set app name
+app.setName('Krypt Pad')
+
 // Installs electron dev tools in the Developer Tools window.
 //const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
 
@@ -30,6 +33,14 @@ process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.
 // Log the platform
 console.log('Platform detected as ' + process.platform)
 
+enum OSType {
+    Windows,
+    MacOS,
+    Linux
+}
+
+const osType: OSType = process.platform === 'win32' ? OSType.Windows : process.platform === 'darwin' ? OSType.MacOS : OSType.Linux
+
 let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
@@ -43,16 +54,15 @@ const filters: Electron.FileFilter[] = [
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: true, standard: true } }])
 
-const menu = new Menu()
 let unlockedProfilePassphrase: string | null = null
 
 /**
  * Creates the main browser window
  */
 function createWindow() {
-    let mainWindowState = windowStateKeeper({
-        defaultWidth: 800,
-        defaultHeight: 600
+    const mainWindowState = windowStateKeeper({
+        defaultWidth: 1000,
+        defaultHeight: 800
     })
 
     // Create the browser window.
@@ -111,7 +121,29 @@ function createWindow() {
     })
 }
 
-// Create menu structure
+const menu = new Menu()
+
+// macOS App menu
+if (osType === OSType.MacOS) {
+    menu.append(
+        new MenuItem({
+            label: app.name,
+            submenu: [
+                { role: 'about' },
+                { type: 'separator' },
+                { role: 'services' },
+                { type: 'separator' },
+                { role: 'hide' },
+                { role: 'hideOthers' },
+                { role: 'unhide' },
+                { type: 'separator' },
+                { role: 'quit' }
+            ]
+        })
+    )
+}
+
+// File menu
 menu.append(
     new MenuItem({
         label: 'File',
@@ -119,32 +151,28 @@ menu.append(
             {
                 label: 'New File',
                 accelerator: SHORTCUT_NEW,
-                click: () => {
-                    win?.webContents.send('handle-shortcut', SHORTCUT_NEW)
-                }
+                click: () => win?.webContents.send('handle-shortcut', SHORTCUT_NEW)
             },
             {
                 label: 'Open File',
                 accelerator: SHORTCUT_OPEN,
-                click: () => {
-                    win?.webContents.send('handle-shortcut', SHORTCUT_OPEN)
-                }
+                click: () => win?.webContents.send('handle-shortcut', SHORTCUT_OPEN)
             },
-            // Add a divider
             { type: 'separator' },
             {
                 role: 'close',
                 label: 'Close File',
                 accelerator: SHORTCUT_CLOSE,
-                click: () => {
-                    win?.webContents.send('handle-shortcut', SHORTCUT_CLOSE)
-                }
+                click: () => win?.webContents.send(
+                    'handle-shortcut', SHORTCUT_CLOSE
+                )
             }
         ]
     })
 )
 
 Menu.setApplicationMenu(menu)
+
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
