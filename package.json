@@ -1,15 +1,18 @@
 {
     "name": "krypt-pad",
     "productName": "Krypt Pad",
+    "desktopName": "Krypt Pad",
     "version": "0.1.0",
     "private": false,
     "description": "A secure note and password manager with AES-256 bit encryption.",
-    "author": "Neptune Century Studios",
+    "author": "Neptune Century Studios <neptunecentury@gmail.com>",
+    "homepage": "https://github.com/KryptPad/krypt-pad",
     "license": "MIT",
     "main": "dist-electron/main.js",
     "scripts": {
         "dev": "vite",
         "build": "vue-tsc && vite build && electron-builder",
+        "build:deb": "vue-tsc && vite build && electron-builder --linux deb",
         "preview": "vite preview",
         "format": "prettier --write src/"
     },

@@ -54,8 +54,26 @@
   },
   "linux": {
     "target": [
-      "AppImage"
+      "AppImage",
+      "deb"
     ],
+    "vendor": "Neptune Century Studios",
+    "maintainer": "Neptune Century Studios <neptunecentury@gmail.com>",
+    "icon": "public/safe.png",
+    "category": "Utility",
+    "executableName": "krypt-pad",
+    "syncDesktopName": true,
+    "desktop": {
+      "entry": {
+        "StartupWMClass": "krypt-pad"
+      }
+    },
     "artifactName": "${productName}-Linux-${version}.${ext}"
+  },
+  "deb": {
+    "fpm": [
+      "build/krypt-pad.metainfo.xml=/usr/share/metainfo/krypt-pad.metainfo.xml"
+    ],
+    "priority": "optional"
   }
 }

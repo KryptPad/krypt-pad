@@ -74,7 +74,7 @@ function createWindow() {
         height: mainWindowState.height,
         titleBarStyle: 'hidden',
         //...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
-        icon: path.join(process.env.VITE_PUBLIC, 'safe.ico'),
+        icon: path.join(process.env.VITE_PUBLIC, 'safe.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js')
         }
