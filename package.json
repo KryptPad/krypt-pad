@@ -1,7 +1,7 @@
 {
     "name": "krypt-pad",
-    "productName": "Krypt Pad",
-    "desktopName": "Krypt Pad",
+    "productName": "krypt-pad",
+    "desktopName": "krypt-pad.desktop",
     "version": "0.1.0",
     "private": false,
     "description": "A secure note and password manager with AES-256 bit encryption.",

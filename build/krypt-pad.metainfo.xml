@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright 2026 Neptune Century Studios -->
 <component type="desktop-application">
-  <id>krypt-pad</id>
+  <id>com.kryptpad.app</id>
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
   <name>Krypt Pad</name>
   <summary>A secure note and password manager with AES-256 bit encryption.</summary>
   <description>
-    <p>
       Krypt Pad is a secure note and password manager using AES-256 bit encryption.
       Your data is stored in files on your devices.
-    </p>
   </description>
   <launchable type="desktop-id">krypt-pad.desktop</launchable>
   <developer id="com.kryptpad.app">

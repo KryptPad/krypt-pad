@@ -5,7 +5,7 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.kryptpad.app",
   "asar": true,
-  "productName": "Krypt Pad",
+  "productName": "krypt-pad",
   "directories": {
     "output": "release/${version}"
   },
@@ -57,6 +57,8 @@
       "AppImage",
       "deb"
     ],
+    "synopsis": "A secure note and password manager with AES-256 bit encryption.",
+    "description": "Krypt Pad is a secure note and password manager using AES-256 bit encryption. Your data is stored in files on your devices.",
     "vendor": "Neptune Century Studios",
     "maintainer": "Neptune Century Studios <neptunecentury@gmail.com>",
     "icon": "public/safe.png",
@@ -72,7 +74,8 @@
   },
   "deb": {
     "fpm": [
-      "build/krypt-pad.metainfo.xml=/usr/share/metainfo/krypt-pad.metainfo.xml"
+      "build/krypt-pad.metainfo.xml=/usr/share/metainfo/krypt-pad.metainfo.xml",
+      "build/copyright=/usr/share/doc/krypt-pad/copyright"
     ],
     "priority": "optional"
   }
