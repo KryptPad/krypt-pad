@@ -2,25 +2,20 @@
     <v-main>
         <v-container>
             <h1>Help Support Krypt Pad</h1>
-            <p>Show your appreciation by using the QR code(s) below to send some crypto. Thanks!</p>
+            <p>Show your appreciation by using any of the methods below to show support. Thanks!</p>
 
-            <div class="d-flex justify-space-around mt-5">
+            <v-btn class="mb-5" color="primary" @click="openTipLink">Tip me on ko-fi</v-btn>
+
+            <h2>Other ways to support Krypt Pad</h2>
+
+            <div class="d-flex" style="gap: 1rem">
                 <!-- BTC -->
                 <v-card class="text-center">
                     <v-card-title>
-                        <div><v-icon icon="mdi-send" color="primary"></v-icon>&nbsp;BTC</div>
+                        <div><v-icon icon="mdi-send" color="primary"></v-icon>&nbsp;Bitcoin</div>
                     </v-card-title>
 
                     <img :src="qrBTC" style="height: 10rem" />
-                </v-card>
-
-                <!-- OSMO -->
-                <v-card class="text-center">
-                    <v-card-title>
-                        <div><v-icon icon="mdi-send" color="primary"></v-icon>&nbsp;OSMO</div>
-                    </v-card-title>
-
-                    <img :src="qrOSMO" style="height: 10rem" />
                 </v-card>
             </div>
         </v-container>
@@ -31,8 +26,7 @@
 import { Ref, ref } from 'vue'
 import QRCode from 'qrcode'
 
-const qrBTC = ref<string | undefined>()
-const qrOSMO = ref<string | undefined>()
+const qrBTC = ref<string>()
 
 /**
  * Generates a QR code from text
@@ -46,7 +40,10 @@ const generateQR = async (text: string, refVar: Ref<string | undefined>) => {
     }
 }
 
+function openTipLink() {
+    window.open('https://ko-fi.com/neptunecentury', '_blank')
+}
+
 // Generate QR codes
 generateQR('bc1q5c4gjd33py30sg9n9jcvgevuxu2fcl3r4j7yuq', qrBTC)
-generateQR('osmo1khpun6zyp6sr505zp3utthejdy3v5duu99nm8z', qrOSMO)
 </script>

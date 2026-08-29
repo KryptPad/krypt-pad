@@ -6,7 +6,7 @@
         </div>
         <!-- </template> -->
 
-        <div v-if="platform !== 'darwin'">{{ title }}</div>
+        <div v-if="platform !== 'darwin'">{{ title }} <span class="text-warning">- beta</span></div>
 
         <div v-if="platform !== 'darwin'" class="mx-3 title-bar-menu">
             <slot name="menu"> </slot>
