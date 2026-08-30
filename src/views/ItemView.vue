@@ -4,8 +4,7 @@
             <v-row class="flex-grow-0">
                 <v-col>
                     <v-text-field
-                        :model-value="currentItem.name"
-                        @change="currentItem.name = $event.target.value"
+                        v-model="currentItem.name"
                         type="text"
                         class="flex-grow-0"
                         label="card name"
@@ -28,8 +27,7 @@
 
             <div class="flex-fill d-flex mb-3">
                 <v-textarea
-                    :model-value="currentItem.notes"
-                    @change="currentItem.notes = $event.target.value"
+                    v-model="currentItem.notes"
                     label="notes"
                     class="d-flex flex-column fill-height mr-3"
                     :hide-details="true"
@@ -173,10 +171,11 @@ async function initData() {
     }
     unwatch = watch(
         currentItem,
-        async (newItem) => {
+        (newItem) => {
             if (newItem) {
-                console.log('Item changed', newItem)
-                await kpAPI.commitProfileAsync()
+                // Debounced autosave so edits are persisted shortly after typing
+                // stops without writing to disk on every keystroke.
+                kpAPI.scheduleCommit()
             }
         },
         { deep: true }

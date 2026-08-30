@@ -3,7 +3,7 @@
     <div v-if="!isEditing" class="d-flex" @keypress.enter="saveField">
         <v-text-field
             :model-value="internalField.value"
-            @change="onValueChange"
+            @input="onValueChange"
             :label="internalField.name"
             :hide-details="true"
             class="mr-3"

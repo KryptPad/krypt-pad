@@ -4,7 +4,7 @@ import { app, protocol, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem, S
 import path from 'node:path'
 // Library to keep track of the electron window state between uses.
 import windowStateKeeper from 'electron-window-state'
-import { writeFile, readFile } from 'fs/promises'
+import { writeFile, readFile, open, rename, unlink } from 'fs/promises'
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts'
 import { decryptFilePayloadAsync, encryptFilePayloadAsync } from './krypto'
 import { IPCData } from './ipc.ts'
@@ -55,6 +55,37 @@ const filters: Electron.FileFilter[] = [
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: true, standard: true } }])
 
 let unlockedProfilePassphrase: string | null = null
+
+/**
+ * Atomically writes data to a file by writing to a temporary file in the same
+ * directory, flushing it to disk, then renaming it over the target. This
+ * prevents a crash or power loss mid-write from corrupting the destination.
+ * @param filePath The path of the file to write
+ * @param data The data to write
+ */
+async function writeFileAtomic(filePath: string, data: Uint8Array): Promise<void> {
+    const directory = path.dirname(filePath)
+    const tempFilePath = path.join(directory, `.${path.basename(filePath)}.tmp`)
+
+    try {
+        // Write to a temporary file in the same directory as the target
+        const fileHandle = await open(tempFilePath, 'w')
+        try {
+            await fileHandle.writeFile(data)
+            // Ensure the data is durably written to disk before replacing the target
+            await fileHandle.sync()
+        } finally {
+            await fileHandle.close()
+        }
+
+        // Atomically replace the destination with the fully-written temp file
+        await rename(tempFilePath, filePath)
+    } catch (ex) {
+        // Clean up the temporary file if it was created
+        await unlink(tempFilePath).catch(() => {})
+        throw ex
+    }
+}
 
 /**
  * Creates the main browser window
@@ -284,7 +315,8 @@ app.whenReady().then(async () => {
 
             // Open file for writing
             const encryptedData = await encryptFilePayloadAsync(profileData, unlockedProfilePassphrase)
-            await writeFile(fileName, new Uint8Array(encryptedData))
+            // Write atomically so a crash mid-write can't corrupt the vault
+            await writeFileAtomic(fileName, new Uint8Array(encryptedData))
         } catch (ex) {
             ipcData.error = KryptPadError.fromError(ex)
 

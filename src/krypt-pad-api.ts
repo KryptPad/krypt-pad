@@ -20,6 +20,21 @@ class KryptPadAPI {
     ipcBridge = new IPCBridge()
 
     /**
+     * Timeout id for the debounced autosave, used by field editors
+     */
+    private _commitTimer: ReturnType<typeof setTimeout> | undefined
+
+    /**
+     * Promise chain that serializes profile saves so they never overlap
+     */
+    private _commitChain: Promise<void> = Promise.resolve()
+
+    /**
+     * Whether there are unsaved edits that still need to be written
+     */
+    private _needsAutoSave = false
+
+    /**
      * Callback to prompt for passphrase
      */
     private _requirePassphraseCallback: Function | null = null
@@ -74,7 +89,7 @@ class KryptPadAPI {
         console.info(`Loaded file(s): `, selectedFile)
 
         // Close open file
-        this.closeFile()
+        await this.closeFile()
 
         // Set new filename
         this.fileName.value = ensureExtension(selectedFile.filePaths[0], 'kpf')
@@ -139,7 +154,7 @@ class KryptPadAPI {
         console.info(`Saved file(s): `, selectedFile)
 
         // Close open file
-        this.closeFile()
+        await this.closeFile()
 
         // Set new filename
         this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf')
@@ -193,7 +208,9 @@ class KryptPadAPI {
     /**
      * Closes the currently open file
      */
-    closeFile = () => {
+    closeFile = async () => {
+        // Ensure any pending debounced autosave completes before discarding the profile
+        await this.flushPendingCommit()
         void this.ipcBridge.lockProfile()
         this.profile.value = null
         this.fileOpened.value = false
@@ -203,36 +220,85 @@ class KryptPadAPI {
     }
 
     /**
-     * Saves the profile data to a file
+     * Schedules a debounced save of the profile. Used by field editors to avoid
+     * writing to disk on every keystroke while still persisting edits promptly.
+     */
+    scheduleCommit = () => {
+        this._needsAutoSave = true
+
+        if (this._commitTimer) {
+            clearTimeout(this._commitTimer)
+        }
+        this._commitTimer = setTimeout(() => {
+            this._commitTimer = undefined
+            void this.commitProfileAsync()
+        }, 750)
+    }
+
+    /**
+     * Ensures any pending debounced save completes before the profile is
+     * discarded (e.g. when closing or locking). Any in-progress edits are
+     * written to disk so nothing is lost.
+     * @returns A promise that resolves once the profile is fully persisted
+     */
+    flushPendingCommit = async () => {
+        if (this._commitTimer) {
+            clearTimeout(this._commitTimer)
+            this._commitTimer = undefined
+        }
+
+        // Wait for any already-running/queued save to settle first
+        await this._commitChain
+
+        // If edits were made after the last save started, persist them now
+        if (this._needsAutoSave) {
+            await this.commitProfileAsync()
+        }
+    }
+
+    /**
+     * Saves the profile data to a file. Saves are serialized so they never
+     * overlap, and each save snapshots the freshest profile state.
      */
     commitProfileAsync = async () => {
-        console.info(`Writing changes to file '${this.fileName.value}'`)
+        this._commitChain = this._commitChain
+            .then(() => this._doCommit())
+            .catch(() => {})
+        return this._commitChain
+    }
 
-        // Encrypt the profile. But first, make sure we have a filename.
-        if (this.fileName.value && !this.saving.value) {
-            this.saving.value = true
-            // Keep the user session alive
-            this._resetTimeoutCallback?.()
+    /**
+     * Core save routine that performs the actual encryption and write.
+     */
+    private _doCommit = async (): Promise<void> => {
+        const fileName = this.fileName.value
+        if (!fileName) {
+            return
+        }
 
-            try {
-                const plainText = await this.profile.value?.toJSON()
-                if (!plainText) {
-                    throw new Error('Failed to convert profile to JSON')
-                }
+        this._needsAutoSave = false
+        this.saving.value = true
+        // Keep the user session alive
+        this._resetTimeoutCallback?.()
 
-                // Write a file containig the encrypted data
-                await this.ipcBridge.saveProfile(this.fileName.value, plainText)
-                console.info('Changes written to file.')
-            } catch (ex) {
-                const err = getExceptionMessage(ex)
-                console.error(err, ex)
-
-                // Display alert
-                await this.alertDialog?.value?.error(err)
+        try {
+            const plainText = await this.profile.value?.toJSON()
+            if (!plainText) {
+                throw new Error('Failed to convert profile to JSON')
             }
 
-            this.saving.value = false
+            // Write a file containing the encrypted data
+            await this.ipcBridge.saveProfile(fileName, plainText)
+            console.info('Changes written to file.')
+        } catch (ex) {
+            const err = getExceptionMessage(ex)
+            console.error(err, ex)
+
+            // Display alert
+            await this.alertDialog?.value?.error(err)
         }
+
+        this.saving.value = false
     }
 
     /**

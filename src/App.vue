@@ -122,7 +122,7 @@ import TitleBar from '@/components/TitleBar.vue'
 import PassphrasePrompt from '@/components/PassphrasePrompt.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AlertDialog from '@/components/AlertDialog.vue'
-import { computed, provide, ref, inject, watch } from 'vue'
+import { computed, provide, ref, inject, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants'
 
@@ -267,40 +267,80 @@ function clearIdleTimeout() {
 }
 
 /**
- * Resets the idle timeout
+ * Resets the idle timeout. Creates the countdown interval once and reuses it;
+ * on subsequent resets (e.g. user activity) it simply restarts the countdown
+ * so the interval isn't recreated each time (which would otherwise leak).
  */
 function resetIdleTimeout() {
-    // If there is a timeout id, clear it
-    clearIdleTimeout()
-
     // Check if the timeout should begin
     if (kpAPI.profile.value && appSettings.enableTimeout.value && appSettings.timeoutInSeconds.value) {
-        // Get the new timeout value
+        // Get the new timeout value and dismiss any "expiring" alert
         secondsRemaining.value = appSettings.timeoutInSeconds.value
+        timeoutAlert.value = false
 
-        // Begin count down timer
-        countdownId = setInterval(() => {
-            let tempSecondsRemaining = secondsRemaining.value
-            if (tempSecondsRemaining) {
-                tempSecondsRemaining--
+        // Begin the countdown timer only if it isn't already running
+        if (!countdownId) {
+            countdownId = setInterval(() => {
+                let tempSecondsRemaining = secondsRemaining.value
+                if (tempSecondsRemaining) {
+                    tempSecondsRemaining--
 
-                // When there is not much time left, alert the user
-                if (tempSecondsRemaining <= 60 && !timeoutAlert.value) {
-                    timeoutAlert.value = true
+                    // When there is not much time left, alert the user
+                    if (tempSecondsRemaining <= 60 && !timeoutAlert.value) {
+                        timeoutAlert.value = true
+                    }
+
+                    // Check if the timer has reached 0
+                    if (tempSecondsRemaining < 1) {
+                        tempSecondsRemaining = 0
+                        // Close the file
+                        void kpAPI.closeFile()
+                    }
                 }
 
-                // Check if the timeer has reached 0
-                if (tempSecondsRemaining < 1) {
-                    tempSecondsRemaining = 0
-                    // Close the file
-                    kpAPI.closeFile()
-                }
-            }
-
-            secondsRemaining.value = tempSecondsRemaining
-        }, 1000)
+                secondsRemaining.value = tempSecondsRemaining
+            }, 1000)
+        }
+    } else {
+        clearIdleTimeout()
     }
 }
+
+// Track user activity so the vault is not closed while the user is working.
+let lastUserActivityTimestamp = 0
+
+/**
+ * Resets the idle timeout when the user interacts with the app. This ensures
+ * the vault stays open while the user is actively typing or moving the mouse,
+ * even if no save has occurred yet. High-frequency activity such as mousemove
+ * is throttled to reduce overhead.
+ */
+function onUserActivity() {
+    const now = Date.now()
+    // Throttle to once every 2 seconds (mousemove fires very frequently)
+    if (now - lastUserActivityTimestamp < 2000) {
+        return
+    }
+    lastUserActivityTimestamp = now
+    resetIdleTimeout()
+}
+
+// Register window-level activity listeners to keep the session alive.
+onMounted(() => {
+    window.addEventListener('mousemove', onUserActivity)
+    window.addEventListener('mousedown', onUserActivity)
+    window.addEventListener('keydown', onUserActivity)
+    window.addEventListener('wheel', onUserActivity)
+    window.addEventListener('touchstart', onUserActivity)
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('mousemove', onUserActivity)
+    window.removeEventListener('mousedown', onUserActivity)
+    window.removeEventListener('keydown', onUserActivity)
+    window.removeEventListener('wheel', onUserActivity)
+    window.removeEventListener('touchstart', onUserActivity)
+})
 
 // Watch for file opened. This will start the timer if it is enabled
 watch(kpAPI.profile, (newProfileValue) => {
