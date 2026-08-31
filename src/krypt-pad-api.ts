@@ -1,14 +1,11 @@
-import { reactive, ref, Ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { IPCBridge } from '@/bridge'
 import { Category, Profile } from './krypt-pad-profile'
 import { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 import { KryptPadError, KryptPadErrorCodes, getExceptionMessage } from '../common/error-utils'
-
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import AlertDialog from '@/components/AlertDialog.vue'
 import { ensureExtension, getDirectoryFromFilePath } from './utils'
 import { SettingsManager } from './app-settings'
-import { IAPISettings } from './api-settings'
+import { IAPISettings, IConfirmDialog, IAlertDialog } from './interfaces'
 
 class KryptPadAPI {
     private appSettings: SettingsManager
@@ -17,8 +14,8 @@ class KryptPadAPI {
     profile = ref<Profile | null>(null)
     router: Router | null = null
     route: RouteLocationNormalizedLoaded | null = null
-    confirmDialog: Ref<InstanceType<typeof ConfirmDialog> | null> | null = null
-    alertDialog?: Ref<InstanceType<typeof AlertDialog> | null>
+    confirmDialog?: IConfirmDialog
+    alertDialog?: IAlertDialog
     saving = ref(false)
     ipcBridge = new IPCBridge()
 
@@ -52,6 +49,10 @@ class KryptPadAPI {
      */
     constructor(apiSettings: IAPISettings) {
         this.appSettings = apiSettings.appSettings
+        this.router = apiSettings.router
+        this.route = apiSettings.route
+        this.confirmDialog = apiSettings.confirmDialog
+        this.alertDialog = apiSettings.alertDialog
     }
 
     /**
@@ -135,7 +136,7 @@ class KryptPadAPI {
                 console.error(err, ex)
 
                 // Display alert
-                await this.alertDialog?.value?.error(err)
+                await this.alertDialog?.error(err)
 
                 // Check if this is a decryption error. If so, increase attempt count.
                 if (ex instanceof KryptPadError && ex.code === KryptPadErrorCodes.DECRYPT_ERROR) {
@@ -230,6 +231,7 @@ class KryptPadAPI {
         await this.flushPendingCommit()
         void this.ipcBridge.lockProfile()
         this.profile.value = null
+        this.fileName.value = undefined
         this.fileOpened.value = false
 
         // Go to start page
@@ -310,7 +312,7 @@ class KryptPadAPI {
             console.error(err, ex)
 
             // Display alert
-            await this.alertDialog?.value?.error(err)
+            await this.alertDialog?.error(err)
         }
 
         this.saving.value = false
@@ -325,7 +327,7 @@ class KryptPadAPI {
             return
         }
 
-        if (await this.confirmDialog?.value?.confirm('Are you sure you want to delete this category?')) {
+        if (await this.confirmDialog?.confirm('Are you sure you want to delete this category?')) {
             // Remove category from list
             const index = this.profile.value.categories.indexOf(category)
             if (index > -1) {

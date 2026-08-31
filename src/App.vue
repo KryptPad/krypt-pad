@@ -136,8 +136,8 @@ const appSettings = inject<SettingsManager>('appSettings')!
 
 // Component refs
 const passphrasePrompter = ref<InstanceType<typeof PassphrasePrompt>>()
-const confirmDialogPrompt = ref<InstanceType<typeof ConfirmDialog> | null>(null)
-const alertDialogPrompt = ref<InstanceType<typeof AlertDialog> | null>(null)
+const confirmDialogPrompt = ref<InstanceType<typeof ConfirmDialog>>()
+const alertDialogPrompt = ref<InstanceType<typeof AlertDialog>>()
 
 // Data
 const passphraseIsNew = ref(false)
@@ -145,13 +145,18 @@ const secondsRemaining = ref<number | undefined>(0)
 const timeoutAlert = ref(false)
 
 // Main API
-const kpAPI = new KryptPadAPI({ appSettings: appSettings })
-
-// Initialize the API
-kpAPI.router = useRouter()
-kpAPI.route = useRoute()
-kpAPI.confirmDialog = confirmDialogPrompt
-kpAPI.alertDialog = alertDialogPrompt
+const kpAPI = new KryptPadAPI({
+    appSettings: appSettings,
+    router: useRouter(),
+    route: useRoute(),
+    confirmDialog: {
+        confirm: (message: string) => confirmDialogPrompt.value?.confirm(message) ?? Promise.resolve(false)
+    },
+    alertDialog: {
+        alert: (message: string, options?: any) => alertDialogPrompt.value?.alert(message, options) ?? Promise.resolve(false),
+        error: (message: string) => alertDialogPrompt.value?.error(message) ?? Promise.resolve(false)
+    }
+})
 
 // Provide the krypt pad API for other components to inject
 provide('kpAPI', kpAPI)
@@ -260,6 +265,7 @@ function clearIdleTimeout() {
     // If there is a timeout id, clear it
     if (countdownId) {
         clearInterval(countdownId)
+        countdownId = undefined
     }
 
     // Close the snackbar
@@ -344,6 +350,7 @@ onBeforeUnmount(() => {
 
 // Watch for file opened. This will start the timer if it is enabled
 watch(kpAPI.profile, (newProfileValue) => {
+    console.log('Profile changed. New value:', newProfileValue)
     if (newProfileValue) {
         // A profile is opened. Start the timeout.
         resetIdleTimeout()

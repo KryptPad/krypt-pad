@@ -34,8 +34,9 @@ let confirmResolve: Function | null = null
 /**
  * Shows the user a confirm message
  * @param {String} message
+ * @returns {Promise<boolean>}
  */
-function confirm(message: string) {
+function confirm(message: string): Promise<boolean> {
     showDialog.value = true
     return new Promise((resolve) => {
         confirmResolve = resolve
