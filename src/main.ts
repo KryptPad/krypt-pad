@@ -8,6 +8,8 @@ import * as directives from 'vuetify/directives'
 import router from '@/router'
 import { IPCBridge } from '@/bridge'
 import { SettingsManager } from '@/app-settings'
+// Styles
+import '@/styles/app.scss'
 // Main component
 import App from '@/App.vue'
 
@@ -16,10 +18,8 @@ function loadApp(platform: string, appSettings?: SettingsManager) {
     const vuetify = createVuetify({
         defaults: {
             global: {
-                // I love the ripple effect
                 ripple: true,
-                density: 'comfortable',
-                elevation: 0
+                density: 'comfortable'
             }
         },
         theme: {

@@ -30,8 +30,8 @@ interface KryptPadDesktopApi {
     lockProfile(): Promise<any>
     saveConfig(data: string): Promise<any>
     loadConfig(): Promise<any>
-    showOpenFileDialog(): Promise<any>
-    showSaveFileDialog(): Promise<any>
+    showOpenFileDialog(defaultPath?: string): Promise<any>
+    showSaveFileDialog(defaultPath?: string): Promise<any>
     getIsMaximized(): Promise<any>
     toggleMaximizeRestore(): void
     minimize(): void

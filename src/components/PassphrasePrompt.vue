@@ -12,8 +12,8 @@
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn prepend-icon="mdi-check" color="primary" @click="ok">OK</v-btn>
-                <v-btn prepend-icon="mdi-close" @click="cancel">CANCEL</v-btn>
+                <v-btn size="x-large" prepend-icon="mdi-check" color="primary" @click="ok">OK</v-btn>
+                <v-btn size="x-large" prepend-icon="mdi-close" @click="cancel">CANCEL</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>

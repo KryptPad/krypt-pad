@@ -88,20 +88,22 @@ class IPCBridge {
 
     /**
      * Shows the open file dialog.
+     * @param defaultPath The default path to show in the dialog
      * @returns Promise
      */
-    async showOpenFileDialogAsync(): Promise<Electron.OpenDialogReturnValue> {
+    async showOpenFileDialogAsync(defaultPath?: string): Promise<Electron.OpenDialogReturnValue> {
         // Send message to main process to open the dialog.
-        return <Electron.OpenDialogReturnValue>await this.desktopApi.showOpenFileDialog()
+        return <Electron.OpenDialogReturnValue>await this.desktopApi.showOpenFileDialog(defaultPath)
     }
 
     /**
-     * Shows the save file dialog
+     * Shows the save file dialog.
+     * @param defaultPath The default path to show in the dialog
      * @returns Promise
      */
-    async showSaveFileDialogAsync(): Promise<Electron.SaveDialogReturnValue> {
+    async showSaveFileDialogAsync(defaultPath?: string): Promise<Electron.SaveDialogReturnValue> {
         // Send message to main process to open the dialog.
-        return <Electron.SaveDialogReturnValue>await this.desktopApi.showSaveFileDialog()
+        return <Electron.SaveDialogReturnValue>await this.desktopApi.showSaveFileDialog(defaultPath)
     }
 
     /**

@@ -26,17 +26,12 @@
             </v-row>
 
             <div class="flex-fill d-flex mb-3">
-                <v-textarea
-                    v-model="currentItem.notes"
-                    label="notes"
-                    class="d-flex flex-column fill-height mr-3"
-                    :hide-details="true"
-                ></v-textarea>
+                <v-textarea v-model="currentItem.notes" label="notes" class="d-flex flex-column fill-height mr-3" :hide-details="true"></v-textarea>
 
                 <div class="">
                     Add any additional data fields you need.
 
-                    <v-btn v-if="!isEditing" color="secondary" variant="tonal" @click="isEditing = true" :block="true">ADD FIELD</v-btn>
+                    <v-btn size="x-large" v-if="!isEditing" color="secondary" @click="isEditing = true" :block="true">ADD FIELD</v-btn>
 
                     <v-card v-else class="my-3" @keypress.enter="addField" @keypress.esc="isEditing = false">
                         <v-card-text>
@@ -56,14 +51,14 @@
 
             <div class="d-flex align-items-center">
                 <v-btn-group>
-                    <v-btn variant="tonal" prepend-icon="mdi-arrow-left" text="BACK" @click="backHome"></v-btn>
+                    <v-btn size="x-large" color="primary" prepend-icon="mdi-arrow-left" text="Done" @click="backHome"></v-btn>
                 </v-btn-group>
 
                 <v-btn-group class="ml-auto">
-                    <v-btn color="red-accent-2" variant="tonal" prepend-icon="mdi-delete" text="DELETE" @click="deleteItem"></v-btn>
+                    <v-btn size="x-large" color="red-accent-2" prepend-icon="mdi-delete" text="DELETE" @click="deleteItem"></v-btn>
                 </v-btn-group>
             </div>
-            <confirm-dialog ref="confirmDeletePrompt" color="red"></confirm-dialog>
+            <confirm-dialog ref="confirmDeletePrompt" color="red" :danger-mode="true"></confirm-dialog>
         </v-container>
     </v-main>
 </template>

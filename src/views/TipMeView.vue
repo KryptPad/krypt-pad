@@ -4,7 +4,7 @@
             <h1>Help Support Krypt Pad</h1>
             <p>Show your appreciation by using any of the methods below to show support. Thanks!</p>
 
-            <v-btn class="mb-5" color="primary" @click="openTipLink">Tip me on ko-fi</v-btn>
+            <v-btn size="x-large" class="mb-5" color="primary" @click="openTipLink">Tip me on ko-fi</v-btn>
 
             <h2>Other ways to support Krypt Pad</h2>
 

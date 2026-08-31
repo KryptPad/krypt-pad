@@ -1,0 +1,9 @@
+@use 'vuetify/settings';
+
+.v-btn {
+    text-transform: uppercase;
+}
+
+.v-overlay.v-overlay--active.v-dialog {
+    backdrop-filter: blur(10px);
+}

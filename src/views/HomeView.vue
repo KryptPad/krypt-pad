@@ -49,17 +49,13 @@
 
         <template v-slot:append>
             <!-- Add new item -->
-            <v-tooltip text="Add new item">
-                <template v-slot:activator="{ props }">
-                    <v-btn v-bind="props" color="secondary" variant="tonal" icon="mdi-plus" @click="addItemAsync"></v-btn>
-                </template>
-            </v-tooltip>
+            <v-btn size="large" color="primary" prepend-icon="mdi-plus" @click="addItemAsync">Add new</v-btn>
         </template>
     </v-app-bar>
 
     <!-- Main content for cards -->
     <v-main :scrollable="true">
-        <v-container fluid class="d-flex flex-wrap">
+        <v-container fluid class="d-flex flex-wrap pa-3">
             <!-- List of items -->
             <v-card elevation="3" v-for="item in filteredItems" :key="item.id" width="20rem" @click="itemSelected(item)" class="mr-3 mb-3">
                 <v-card-title class="d-flex">

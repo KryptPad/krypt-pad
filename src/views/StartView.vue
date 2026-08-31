@@ -7,10 +7,10 @@
 
             <v-row class="mt-3 flex-grow-0">
                 <v-col>
-                    <v-btn color="secondary" @click="kpAPI.openExistingFileAsync">Open File</v-btn>
+                    <v-btn size="x-large" color="secondary" @click="kpAPI.openExistingFileAsync">Open File</v-btn>
                 </v-col>
                 <v-col>
-                    <v-btn @click="kpAPI.createNewFileAsync">Create New File</v-btn>
+                    <v-btn size="x-large" @click="kpAPI.createNewFileAsync">Create New File</v-btn>
                 </v-col>
             </v-row>
         </v-container>

@@ -1,10 +1,10 @@
 <template>
-    <v-dialog v-model="showDialog" persistent width="auto">
+    <v-dialog v-model="showDialog" persistent width="auto" :style="{ 'background-color': dangerMode ? hexToRgba(colors.red.lighten3, 0.3) : '' }">
         <v-card>
             <v-card-title class="text-h5"> Confirm </v-card-title>
 
             <v-card-text>
-                <div class="d-flex">
+                <div class="d-flex align-center">
                     <v-icon icon="mdi-help-circle" :color="color" size="3rem" class="mr-3"></v-icon>
                     <div>
                         {{ confirmMessage }}
@@ -13,17 +13,19 @@
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn :color="color" @click="yesHandler"> Yes </v-btn>
-                <v-btn @click="noHandler"> No </v-btn>
+                <v-btn size="x-large" :color="color" @click="yesHandler"> Yes </v-btn>
+                <v-btn size="x-large" @click="noHandler"> No </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
 </template>
 
 <script setup lang="ts">
+import { hexToRgba } from '@/utils'
 import { ref } from 'vue'
+import colors from 'vuetify/util/colors'
 
-defineProps({ color: { type: String, default: 'primary' } })
+defineProps({ color: { type: String, default: 'primary' }, dangerMode: { type: Boolean, default: false } })
 
 const showDialog = ref(false)
 const confirmMessage = ref<string | null>(null)

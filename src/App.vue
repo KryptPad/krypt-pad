@@ -145,7 +145,7 @@ const secondsRemaining = ref<number | undefined>(0)
 const timeoutAlert = ref(false)
 
 // Main API
-const kpAPI = new KryptPadAPI()
+const kpAPI = new KryptPadAPI({ appSettings: appSettings })
 
 // Initialize the API
 kpAPI.router = useRouter()
@@ -286,7 +286,7 @@ function resetIdleTimeout() {
                     tempSecondsRemaining--
 
                     // When there is not much time left, alert the user
-                    if (tempSecondsRemaining <= 60 && !timeoutAlert.value) {
+                    if (tempSecondsRemaining <= 30 && !timeoutAlert.value) {
                         timeoutAlert.value = true
                     }
 
@@ -327,7 +327,7 @@ function onUserActivity() {
 
 // Register window-level activity listeners to keep the session alive.
 onMounted(() => {
-    window.addEventListener('mousemove', onUserActivity)
+    //window.addEventListener('mousemove', onUserActivity) // Commenting out because it is too aggressive
     window.addEventListener('mousedown', onUserActivity)
     window.addEventListener('keydown', onUserActivity)
     window.addEventListener('wheel', onUserActivity)
@@ -335,7 +335,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-    window.removeEventListener('mousemove', onUserActivity)
+    //window.removeEventListener('mousemove', onUserActivity) // Commenting out because it is too aggressive
     window.removeEventListener('mousedown', onUserActivity)
     window.removeEventListener('keydown', onUserActivity)
     window.removeEventListener('wheel', onUserActivity)

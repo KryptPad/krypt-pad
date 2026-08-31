@@ -6,9 +6,12 @@ import { KryptPadError, KryptPadErrorCodes, getExceptionMessage } from '../commo
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AlertDialog from '@/components/AlertDialog.vue'
-import { ensureExtension } from './utils'
+import { ensureExtension, getDirectoryFromFilePath } from './utils'
+import { SettingsManager } from './app-settings'
+import { IAPISettings } from './api-settings'
 
 class KryptPadAPI {
+    private appSettings: SettingsManager
     fileOpened = ref(false)
     fileName = ref<string | undefined>()
     profile = ref<Profile | null>(null)
@@ -45,9 +48,11 @@ class KryptPadAPI {
     private _resetTimeoutCallback: Function | null = null
 
     /**
-     *
+     * @param {IAPISettings} apiSettings
      */
-    constructor() {}
+    constructor(apiSettings: IAPISettings) {
+        this.appSettings = apiSettings.appSettings
+    }
 
     /**
      * Registers a callback that will open a prompt for the user to enter his/her passphrase.
@@ -81,7 +86,7 @@ class KryptPadAPI {
      */
     openExistingFileAsync = async () => {
         // Show the open file dialog
-        const selectedFile = await this.ipcBridge.showOpenFileDialogAsync()
+        const selectedFile = await this.ipcBridge.showOpenFileDialogAsync(this.appSettings.lastWorkingDirectory)
         if (selectedFile.canceled) {
             return
         }
@@ -93,6 +98,11 @@ class KryptPadAPI {
 
         // Set new filename
         this.fileName.value = ensureExtension(selectedFile.filePaths[0], 'kpf')
+
+        // Update the last working directory in the app settings
+        this.appSettings.lastWorkingDirectory = getDirectoryFromFilePath(selectedFile.filePaths[0])
+        this.ipcBridge.saveConfigFile(this.appSettings)
+
         let attempts = 0
 
         while (attempts < 3) {
@@ -145,8 +155,7 @@ class KryptPadAPI {
         // TODO: If there is already a file open, prompt the user if they are sure they want to create a new file
 
         // Open save dialog to allow user to save a new file
-
-        const selectedFile = await this.ipcBridge.showSaveFileDialogAsync()
+        const selectedFile = await this.ipcBridge.showSaveFileDialogAsync(this.appSettings.lastWorkingDirectory)
         if (selectedFile.canceled || !selectedFile.filePath) {
             return
         }
@@ -158,6 +167,10 @@ class KryptPadAPI {
 
         // Set new filename
         this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf')
+
+        // Update the last working directory in the app settings
+        this.appSettings.lastWorkingDirectory = getDirectoryFromFilePath(selectedFile.filePath)
+        this.ipcBridge.saveConfigFile(this.appSettings)
 
         // Prompt for new passphrase
         const passphrase = await this._requirePassphraseCallback?.(true)
@@ -185,13 +198,17 @@ class KryptPadAPI {
      */
     saveProfileAsAsync = async () => {
         // Open save dialog to allow user to save a new file
-        const selectedFile = await this.ipcBridge.showSaveFileDialogAsync()
+        const selectedFile = await this.ipcBridge.showSaveFileDialogAsync(this.appSettings.lastWorkingDirectory)
         if (selectedFile.canceled || !selectedFile.filePath) {
             return
         }
 
         // Set new filename
         this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf')
+
+        // Update the last working directory in the app settings
+        this.appSettings.lastWorkingDirectory = getDirectoryFromFilePath(selectedFile.filePath)
+        this.ipcBridge.saveConfigFile(this.appSettings)
 
         // Prompt for new passphrase
         const passphrase = await this._requirePassphraseCallback?.(true)
@@ -261,9 +278,7 @@ class KryptPadAPI {
      * overlap, and each save snapshots the freshest profile state.
      */
     commitProfileAsync = async () => {
-        this._commitChain = this._commitChain
-            .then(() => this._doCommit())
-            .catch(() => {})
+        this._commitChain = this._commitChain.then(() => this._doCommit()).catch(() => {})
         return this._commitChain
     }
 

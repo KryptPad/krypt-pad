@@ -24,11 +24,11 @@ const api = {
     loadConfig(): Promise<any> {
         return ipcRenderer.invoke('load-config')
     },
-    showOpenFileDialog(): Promise<any> {
-        return ipcRenderer.invoke('show-open-file-dialog')
+    showOpenFileDialog(defaultPath?: string): Promise<any> {
+        return ipcRenderer.invoke('show-open-file-dialog', defaultPath)
     },
-    showSaveFileDialog(): Promise<any> {
-        return ipcRenderer.invoke('show-save-file-dialog')
+    showSaveFileDialog(defaultPath?: string): Promise<any> {
+        return ipcRenderer.invoke('show-save-file-dialog', defaultPath)
     },
     getIsMaximized(): Promise<any> {
         return ipcRenderer.invoke('is-maximized')

@@ -194,16 +194,13 @@ menu.append(
                 role: 'close',
                 label: 'Close File',
                 accelerator: SHORTCUT_CLOSE,
-                click: () => win?.webContents.send(
-                    'handle-shortcut', SHORTCUT_CLOSE
-                )
+                click: () => win?.webContents.send('handle-shortcut', SHORTCUT_CLOSE)
             }
         ]
     })
 )
 
 Menu.setApplicationMenu(menu)
-
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -261,12 +258,13 @@ app.whenReady().then(async () => {
     })
 
     // Listen for message to show the open file dialog
-    ipcMain.handle('show-open-file-dialog', async () => {
+    ipcMain.handle('show-open-file-dialog', async (_, defaultPath?: string) => {
         if (!win) {
             return
         }
 
         const options: OpenDialogOptions = {
+            defaultPath: defaultPath,
             properties: ['openFile'],
             filters
         }
@@ -275,12 +273,13 @@ app.whenReady().then(async () => {
     })
 
     // Listen for message to show the save file dialog
-    ipcMain.handle('show-save-file-dialog', async () => {
+    ipcMain.handle('show-save-file-dialog', async (_, defaultPath?: string) => {
         if (!win) {
             return
         }
 
         const options: SaveDialogOptions = {
+            defaultPath: defaultPath,
             properties: ['showOverwriteConfirmation'],
             filters
         }
