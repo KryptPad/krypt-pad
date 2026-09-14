@@ -5,6 +5,7 @@ import path from 'node:path'
 // Library to keep track of the electron window state between uses.
 import windowStateKeeper from 'electron-window-state'
 import { writeFile, readFile, open, rename, unlink } from 'fs/promises'
+import crypto from 'node:crypto'
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts'
 import { decryptFilePayloadAsync, encryptFilePayloadAsync } from './krypto'
 import { IPCData } from './ipc.ts'
@@ -57,15 +58,57 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: tru
 let unlockedProfilePassphrase: string | null = null
 
 /**
+ * Whether the renderer has finished writing any pending edits and the window
+ * is free to close. Until this is set, a close request is deferred so the
+ * debounced autosave can't be discarded along with the window.
+ */
+let pendingEditsFlushed = false
+
+/**
+ * Whether the user asked to quit the whole app rather than just close the
+ * window. On macOS the quit is deferred while edits are flushed, so it has to
+ * be resumed once the window is actually gone.
+ */
+let quitRequested = false
+
+/**
+ * How long to wait for the renderer to report back before closing anyway. A
+ * hung or crashed renderer must never leave the user unable to quit.
+ */
+const FLUSH_BEFORE_CLOSE_TIMEOUT = 3000
+
+/**
+ * Closes the main window now that pending edits are safely on disk, resuming
+ * a quit if that is what the user originally asked for.
+ */
+function closeAfterFlush() {
+    if (pendingEditsFlushed) {
+        return
+    }
+
+    pendingEditsFlushed = true
+    win?.close()
+
+    if (quitRequested) {
+        app.quit()
+    }
+}
+
+/**
  * Atomically writes data to a file by writing to a temporary file in the same
  * directory, flushing it to disk, then renaming it over the target. This
  * prevents a crash or power loss mid-write from corrupting the destination.
+ *
+ * The temporary file name is unique per process and per call. A shared name
+ * would let a second writer truncate the temp file this one is midway through,
+ * so the rename could publish a partial file over a perfectly good profile.
  * @param filePath The path of the file to write
  * @param data The data to write
  */
 async function writeFileAtomic(filePath: string, data: Uint8Array): Promise<void> {
     const directory = path.dirname(filePath)
-    const tempFilePath = path.join(directory, `.${path.basename(filePath)}.tmp`)
+    const uniqueSuffix = `${process.pid}-${crypto.randomBytes(6).toString('hex')}`
+    const tempFilePath = path.join(directory, `.${path.basename(filePath)}.${uniqueSuffix}.tmp`)
 
     try {
         // Write to a temporary file in the same directory as the target
@@ -91,6 +134,11 @@ async function writeFileAtomic(filePath: string, data: Uint8Array): Promise<void
  * Creates the main browser window
  */
 function createWindow() {
+    // A window reopened from the dock on macOS needs its own flush handshake,
+    // so clear the state left behind by the previous one.
+    pendingEditsFlushed = false
+    quitRequested = false
+
     const mainWindowState = windowStateKeeper({
         defaultWidth: 1000,
         defaultHeight: 800
@@ -145,6 +193,21 @@ function createWindow() {
         win?.webContents.send('focus')
     })
 
+    // Give the renderer a chance to write any debounced edits before the window
+    // goes away. Without this, closing the window discards up to the length of
+    // the autosave debounce worth of the user's typing.
+    win.on('close', (e) => {
+        if (pendingEditsFlushed) {
+            return
+        }
+
+        e.preventDefault()
+        win?.webContents.send('flush-before-close')
+
+        // Don't let a hung renderer trap the user in the app
+        setTimeout(closeAfterFlush, FLUSH_BEFORE_CLOSE_TIMEOUT)
+    })
+
     //
     win.webContents.setWindowOpenHandler(({ url }) => {
         shell.openExternal(url)
@@ -191,7 +254,6 @@ menu.append(
             },
             { type: 'separator' },
             {
-                role: 'close',
                 label: 'Close File',
                 accelerator: SHORTCUT_CLOSE,
                 click: () => win?.webContents.send('handle-shortcut', SHORTCUT_CLOSE)
@@ -200,7 +262,37 @@ menu.append(
     })
 )
 
+menu.append(new MenuItem({ role: 'editMenu' }))
+
 Menu.setApplicationMenu(menu)
+
+// Only one instance may run at a time. Two instances sharing a profile would
+// race each other's saves and could leave the file unopenable.
+if (!app.requestSingleInstanceLock()) {
+    app.quit()
+} else {
+    app.on('second-instance', () => {
+        // Surface the window the user already has rather than opening another
+        if (win) {
+            if (win.isMinimized()) {
+                win.restore()
+            }
+            win.focus()
+        }
+    })
+}
+
+// On macOS, Cmd+Q quits without going through the window close path, so the
+// pending-edit flush has to be requested here too.
+app.on('before-quit', (e) => {
+    if (pendingEditsFlushed || !win || win.isDestroyed()) {
+        return
+    }
+
+    quitRequested = true
+    e.preventDefault()
+    win.close()
+})
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -345,6 +437,12 @@ app.whenReady().then(async () => {
 
     ipcMain.handle('lock-profile', async () => {
         unlockedProfilePassphrase = null
+    })
+
+    // The renderer has finished persisting its pending edits, so the window
+    // that was held open by the close handler can now go away.
+    ipcMain.handle('flush-complete', () => {
+        closeAfterFlush()
     })
 
     // Handles saving the application configuration

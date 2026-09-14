@@ -52,6 +52,14 @@ class IPCBridge {
         await this.desktopApi.lockProfile()
     }
 
+    /**
+     * Tells the main process that pending edits have been written and the
+     * window it held open for the flush may now close.
+     */
+    async flushComplete(): Promise<void> {
+        await this.desktopApi.flushComplete()
+    }
+
     onAppEvent(channel: KryptPadEventChannel, listener: (...args: any[]) => void) {
         this.desktopApi.onAppEvent(channel, listener)
     }

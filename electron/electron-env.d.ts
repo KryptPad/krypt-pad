@@ -21,13 +21,14 @@ declare namespace NodeJS {
     }
 }
 
-type KryptPadEventChannel = 'handle-shortcut' | 'unmaximize' | 'maximize' | 'blur' | 'focus'
+type KryptPadEventChannel = 'handle-shortcut' | 'unmaximize' | 'maximize' | 'blur' | 'focus' | 'flush-before-close'
 
 interface KryptPadDesktopApi {
     openProfile(fileName: string, passphrase: string): Promise<any>
     saveProfile(fileName: string, profileData: string): Promise<any>
     setSessionPassphrase(passphrase: string): Promise<any>
     lockProfile(): Promise<any>
+    flushComplete(): Promise<any>
     saveConfig(data: string): Promise<any>
     loadConfig(): Promise<any>
     showOpenFileDialog(defaultPath?: string): Promise<any>

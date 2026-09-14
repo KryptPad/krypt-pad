@@ -166,20 +166,20 @@ class KryptPadAPI {
         // Close open file
         await this.closeFile()
 
+        // Prompt for new passphrase before adopting the new file.
+        const passphrase = await this._requirePassphraseCallback?.(true)
+        if (!passphrase) {
+            return
+        }
+
+        await this.ipcBridge.setSessionPassphrase(passphrase)
+
         // Set new filename
         this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf')
 
         // Update the last working directory in the app settings
         this.appSettings.lastWorkingDirectory = getDirectoryFromFilePath(selectedFile.filePath)
         this.ipcBridge.saveConfigFile(this.appSettings)
-
-        // Prompt for new passphrase
-        const passphrase = await this._requirePassphraseCallback?.(true)
-        if (!passphrase) {
-            throw new Error('Passphrase is required to create a new profile.')
-        }
-
-        await this.ipcBridge.setSessionPassphrase(passphrase)
 
         // Set fileOpen flag
         this.fileOpened.value = true
@@ -204,20 +204,20 @@ class KryptPadAPI {
             return
         }
 
-        // Set new filename
-        this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf')
-
-        // Update the last working directory in the app settings
-        this.appSettings.lastWorkingDirectory = getDirectoryFromFilePath(selectedFile.filePath)
-        this.ipcBridge.saveConfigFile(this.appSettings)
-
-        // Prompt for new passphrase
+        // Prompt for new passphrase before switching to the new file.
         const passphrase = await this._requirePassphraseCallback?.(true)
         if (!passphrase) {
             return
         }
 
         await this.ipcBridge.setSessionPassphrase(passphrase)
+
+        // Set new filename
+        this.fileName.value = ensureExtension(selectedFile.filePath, 'kpf')
+
+        // Update the last working directory in the app settings
+        this.appSettings.lastWorkingDirectory = getDirectoryFromFilePath(selectedFile.filePath)
+        this.ipcBridge.saveConfigFile(this.appSettings)
 
         // Commit the file once after creation
         await this.commitProfileAsync()
@@ -293,6 +293,8 @@ class KryptPadAPI {
             return
         }
 
+        // Cleared up front so edits made while this write is in flight mark the
+        // profile dirty again and are picked up by the next commit.
         this._needsAutoSave = false
         this.saving.value = true
         // Keep the user session alive
@@ -308,6 +310,10 @@ class KryptPadAPI {
             await this.ipcBridge.saveProfile(fileName, plainText)
             console.info('Changes written to file.')
         } catch (ex) {
+            // Nothing reached the disk, so the edits are still outstanding.
+            // Without this they would be dropped by the flush on close.
+            this._needsAutoSave = true
+
             const err = getExceptionMessage(ex)
             console.error(err, ex)
 

@@ -35,7 +35,6 @@ async function save() {
     if (!title.value) {
         return
     }
-    console.log('save', title.value, props.target)
     // Raise the save event
     emit('save', title.value, props.target)
 

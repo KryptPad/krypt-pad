@@ -1,8 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-type AppEventChannel = 'handle-shortcut' | 'unmaximize' | 'maximize' | 'blur' | 'focus'
+type AppEventChannel = 'handle-shortcut' | 'unmaximize' | 'maximize' | 'blur' | 'focus' | 'flush-before-close'
 
-const validEventChannels = new Set<AppEventChannel>(['handle-shortcut', 'unmaximize', 'maximize', 'blur', 'focus'])
+const validEventChannels = new Set<AppEventChannel>(['handle-shortcut', 'unmaximize', 'maximize', 'blur', 'focus', 'flush-before-close'])
 
 // Expose a narrow renderer API.
 const api = {
@@ -17,6 +17,9 @@ const api = {
     },
     lockProfile(): Promise<any> {
         return ipcRenderer.invoke('lock-profile')
+    },
+    flushComplete(): Promise<any> {
+        return ipcRenderer.invoke('flush-complete')
     },
     saveConfig(data: string): Promise<any> {
         return ipcRenderer.invoke('save-config', data)

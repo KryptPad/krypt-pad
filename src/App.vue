@@ -186,6 +186,16 @@ kpAPI.ipcBridge.onAppEvent('handle-shortcut', async (args) => {
     }
 })
 
+// The main process defers closing the window until pending edits are written,
+// so nothing typed in the last moments before closing is lost.
+kpAPI.ipcBridge.onAppEvent('flush-before-close', async () => {
+    try {
+        await kpAPI.flushPendingCommit()
+    } finally {
+        await kpAPI.ipcBridge.flushComplete()
+    }
+})
+
 // Define menu items
 const menuItems = computed(() => {
     return [
@@ -196,7 +206,7 @@ const menuItems = computed(() => {
                 // { title: 'Import KDF File' },
                 { title: 'Open File...', handler: kpAPI.openExistingFileAsync, accelerator: 'Ctrl + O' },
                 { divider: true },
-                { title: 'Close File', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened.value, accelerator: 'Ctrl + F4' },
+                { title: 'Close File', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened.value, accelerator: 'Ctrl + L' },
                 { divider: true },
                 { title: 'Save File As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened.value },
                 { divider: true },
@@ -350,7 +360,6 @@ onBeforeUnmount(() => {
 
 // Watch for file opened. This will start the timer if it is enabled
 watch(kpAPI.profile, (newProfileValue) => {
-    console.log('Profile changed. New value:', newProfileValue)
     if (newProfileValue) {
         // A profile is opened. Start the timeout.
         resetIdleTimeout()

@@ -112,6 +112,22 @@ describe('KryptPadAPI', () => {
             expect(alertError).toHaveBeenCalledWith('disk full')
             expect(api.saving.value).toBe(false)
         })
+
+        it('keeps the edits pending when a save fails so the next flush retries', async () => {
+            api.alertDialog = { error: vi.fn() } as any
+            api.fileName.value = 'vault.kpf'
+            api.profile.value = new Profile()
+            ipcBridgeMock.saveProfile.mockRejectedValueOnce(new Error('disk full'))
+
+            api.scheduleCommit()
+            await api.flushPendingCommit()
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledTimes(1)
+
+            // The failed write left the edits unsaved, so closing the file must
+            // try again rather than discard them.
+            await api.flushPendingCommit()
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledTimes(2)
+        })
     })
 
     describe('scheduleCommit', () => {
@@ -284,6 +300,20 @@ describe('KryptPadAPI', () => {
             expect(api.fileOpened.value).toBe(false)
             expect(ipcBridgeMock.setSessionPassphrase).not.toHaveBeenCalled()
         })
+
+        it('does not adopt the new file when the passphrase prompt is canceled', async () => {
+            api.onRequirePassphrase(vi.fn().mockResolvedValue(undefined))
+            ipcBridgeMock.showSaveFileDialogAsync.mockResolvedValueOnce({
+                canceled: false,
+                filePath: '/data/new.kpf'
+            })
+
+            await expect(api.createNewFileAsync()).resolves.toBeUndefined()
+
+            expect(api.fileName.value).toBeUndefined()
+            expect(api.fileOpened.value).toBe(false)
+            expect(ipcBridgeMock.setSessionPassphrase).not.toHaveBeenCalled()
+        })
     })
 
     describe('saveProfileAsAsync', () => {
@@ -302,6 +332,23 @@ describe('KryptPadAPI', () => {
             expect(api.fileName.value).toBe('/data/new.kpf')
             expect(ipcBridgeMock.setSessionPassphrase).toHaveBeenCalledWith('pass')
             expect(ipcBridgeMock.saveProfile).toHaveBeenCalled()
+        })
+
+        it('keeps saving to the original file when the passphrase prompt is canceled', async () => {
+            api.fileName.value = 'old.kpf'
+            api.profile.value = new Profile()
+            api.onRequirePassphrase(vi.fn().mockResolvedValue(undefined))
+
+            ipcBridgeMock.showSaveFileDialogAsync.mockResolvedValueOnce({
+                canceled: false,
+                filePath: '/data/new.kpf'
+            })
+
+            await api.saveProfileAsAsync()
+
+            expect(api.fileName.value).toBe('old.kpf')
+            expect(ipcBridgeMock.setSessionPassphrase).not.toHaveBeenCalled()
+            expect(ipcBridgeMock.saveProfile).not.toHaveBeenCalled()
         })
     })
 })

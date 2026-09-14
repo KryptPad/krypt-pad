@@ -5,7 +5,17 @@ import vue from '@vitejs/plugin-vue'
 // import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+    build: {
+        // Strip logging from production builds. Profile data must never reach
+        // the console of a shipped build, and this keeps a stray log from
+        // becoming a leak.
+        rolldownOptions: {
+            output: {
+                minify: command === 'build' ? { compress: { dropConsole: true, dropDebugger: true } } : undefined
+            }
+        }
+    },
     resolve: {
         /* Resolve aliases */
         alias: {
@@ -30,4 +40,4 @@ export default defineConfig({
             renderer: {}
         })
     ]
-})
+}))

@@ -8,7 +8,14 @@
                     Please enter a master passphrase to encrypt your data. Keep it safe and secure. If you lose it, THERE IS NO WAY TO RECOVER IT!!!
                 </p>
                 <p v-else>Please enter your passphrase to decrypt your data.</p>
-                <v-text-field :autofocus="true" v-model="passphrase" type="password" class="mt-3"></v-text-field>
+                <v-text-field :autofocus="true" v-model="passphrase" type="password" class="mt-3" label="Passphrase"></v-text-field>
+                <v-text-field
+                    v-if="passphraseIsNew"
+                    v-model="confirmPassphrase"
+                    type="password"
+                    label="Confirm passphrase"
+                    :error-messages="validationError"
+                ></v-text-field>
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
@@ -23,13 +30,21 @@
 import { ref, watch } from 'vue'
 
 // Props
-defineProps({
+const props = defineProps({
     passphraseIsNew: Boolean
 })
 
 const emit = defineEmits(['closed'])
+
+/**
+ * Shortest master passphrase acceptable.
+ */
+const MIN_PASSPHRASE_LENGTH = 12
+
 // Data
 const passphrase = ref()
+const confirmPassphrase = ref()
+const validationError = ref<string | undefined>()
 const dialogOpen = ref(false)
 
 /**
@@ -39,18 +54,55 @@ function show() {
     dialogOpen.value = true
 }
 
+/**
+ * Checks a new passphrase before it is accepted. A typo here cannot be undone
+ * later, because a file can only be opened with the exact passphrase it was
+ * created with.
+ * @returns An error message, or undefined if the passphrase is usable
+ */
+function getValidationError(): string | undefined {
+    if (!passphrase.value || passphrase.value.length < MIN_PASSPHRASE_LENGTH) {
+        return `The passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters.`
+    }
+
+    if (passphrase.value !== confirmPassphrase.value) {
+        return 'The passphrases do not match.'
+    }
+
+    return undefined
+}
+
 // Events
 function ok() {
+    if (props.passphraseIsNew) {
+        // Keep the dialog open until the user has entered a passphrase we are
+        // confident they can reproduce.
+        validationError.value = getValidationError()
+        if (validationError.value) {
+            return
+        }
+    }
+
     // Close dialog.
     dialogOpen.value = false
 }
 
 function cancel() {
     // Clear the passphrase from the input.
-    passphrase.value = undefined
+    clearInputs()
 
     // Close dialog.
     dialogOpen.value = false
+}
+
+/**
+ * Clears the passphrase inputs so they are not left in memory or shown the
+ * next time the dialog opens.
+ */
+function clearInputs() {
+    passphrase.value = undefined
+    confirmPassphrase.value = undefined
+    validationError.value = undefined
 }
 
 watch(dialogOpen, (newValue) => {
@@ -58,7 +110,7 @@ watch(dialogOpen, (newValue) => {
         // The dialog was closed.
         emit('closed', passphrase.value)
         // Clear the passphrase from the input.
-        passphrase.value = undefined
+        clearInputs()
     }
 })
 
