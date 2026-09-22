@@ -14,7 +14,7 @@ export default defineConfig({
         environment: 'jsdom',
         globals: true,
         setupFiles: ['./vitest.setup.ts'],
-        include: ['src/**/*.spec.ts', 'common/**/*.spec.ts'],
+        include: ['src/**/*.spec.ts', 'common/**/*.spec.ts', 'electron/**/*.spec.ts'],
         css: true,
         server: {
             deps: {

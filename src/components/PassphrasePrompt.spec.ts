@@ -95,6 +95,22 @@ describe('PassphrasePrompt', () => {
             wrapper.unmount()
         })
 
+        it('emits closed without a passphrase when dismissed without OK', async () => {
+            const wrapper = mountWithVuetify(PassphrasePrompt, { props: { passphraseIsNew: true } })
+
+            ;(wrapper.vm as any).show()
+            await nextTick()
+            ;(wrapper.vm as any).passphrase = 'correct horse battery'
+            ;(wrapper.vm as any).confirmPassphrase = 'correct horse bttery'
+            // Simulates Esc or a click outside, which closes without calling ok()
+            ;(wrapper.vm as any).dialogOpen = false
+            await nextTick()
+            await flushPromises()
+
+            expect(wrapper.emitted('closed')![0]).toEqual([undefined])
+            wrapper.unmount()
+        })
+
         it('clears both passphrase inputs on cancel', async () => {
             const wrapper = mountWithVuetify(PassphrasePrompt, { props: { passphraseIsNew: true } })
 

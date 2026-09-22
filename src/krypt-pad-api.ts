@@ -147,6 +147,11 @@ class KryptPadAPI {
                 }
             }
         }
+
+        // Don't leave the title bar naming a file that never opened
+        if (!this.fileOpened.value) {
+            this.fileName.value = undefined
+        }
     }
 
     /**
@@ -209,6 +214,10 @@ class KryptPadAPI {
         if (!passphrase) {
             return
         }
+
+        // Write outstanding edits to the original file under its own passphrase
+        // before the session switches to the new file and passphrase.
+        await this.flushPendingCommit()
 
         await this.ipcBridge.setSessionPassphrase(passphrase)
 
@@ -343,6 +352,9 @@ class KryptPadAPI {
                 for (const item of matchingItems) {
                     item.categoryId = undefined
                 }
+
+                // Persist the deletion, otherwise it reappears on the next open
+                await this.commitProfileAsync()
             }
         }
     }

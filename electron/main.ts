@@ -1,12 +1,27 @@
 // Main electron api.
-import { app, protocol, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem, SaveDialogOptions, OpenDialogOptions } from 'electron'
+import {
+    app,
+    protocol,
+    BrowserWindow,
+    ipcMain,
+    dialog,
+    shell,
+    Menu,
+    MenuItem,
+    SaveDialogOptions,
+    OpenDialogOptions,
+    IpcMainEvent,
+    IpcMainInvokeEvent
+} from 'electron'
 // Library for working with directory paths.
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 // Library to keep track of the electron window state between uses.
 import windowStateKeeper from 'electron-window-state'
 import { writeFile, readFile, open, rename, unlink } from 'fs/promises'
 import crypto from 'node:crypto'
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts'
+import { ensureExtension } from '../src/utils.ts'
 import { decryptFilePayloadAsync, encryptFilePayloadAsync } from './krypto'
 import { IPCData } from './ipc.ts'
 import { KryptPadError } from '../common/error-utils'
@@ -56,6 +71,107 @@ const filters: Electron.FileFilter[] = [
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: true, standard: true } }])
 
 let unlockedProfilePassphrase: string | null = null
+
+/**
+ * Files the user picked in an open or save dialog this session. Profiles can
+ * only be read from or written to these paths, so a compromised renderer can't
+ * use the unlocked passphrase to overwrite arbitrary files.
+ */
+const userSelectedPaths = new Set<string>()
+
+/**
+ * Records a path the user picked in a file dialog. The renderer adds the .kpf
+ * extension when a name has none, so the same is done here to match.
+ * @param filePath The path returned by the dialog
+ */
+function rememberUserSelectedPath(filePath: string) {
+    userSelectedPaths.add(path.resolve(ensureExtension(filePath, 'kpf')))
+}
+
+/**
+ * Throws unless the path is one the user picked in a file dialog.
+ * @param filePath The path the renderer asked to use
+ */
+function assertUserSelectedPath(filePath: string) {
+    if (typeof filePath !== 'string' || !userSelectedPaths.has(path.resolve(filePath))) {
+        throw new Error('The file was not selected by the user.')
+    }
+}
+
+/**
+ * The URL the packaged app's page is loaded from.
+ */
+const appFileUrl = pathToFileURL(path.join(process.env.DIST, 'index.html')).href
+
+/**
+ * Whether a URL belongs to the app itself rather than to outside content.
+ * @param url The URL to check
+ */
+function isAppUrl(url: string): boolean {
+    if (VITE_DEV_SERVER_URL) {
+        try {
+            return new URL(url).origin === new URL(VITE_DEV_SERVER_URL).origin
+        } catch {
+            return false
+        }
+    }
+
+    return url === appFileUrl || url.startsWith(appFileUrl + '#')
+}
+
+/**
+ * Opens a link in the user's browser. Only https links are allowed, so a link
+ * can't be used to launch local files or other protocol handlers.
+ * @param url The URL to open
+ */
+function openExternalIfSafe(url: string) {
+    try {
+        if (new URL(url).protocol === 'https:') {
+            void shell.openExternal(url)
+        }
+    } catch {
+        // Not a valid URL, so there is nothing to open
+    }
+}
+
+/**
+ * Whether an IPC message came from the app's own page in the main window.
+ * @param e The IPC event
+ */
+function isTrustedSender(e: IpcMainEvent | IpcMainInvokeEvent): boolean {
+    const frame = e.senderFrame
+    if (!frame || !win || win.isDestroyed() || e.sender !== win.webContents || frame !== win.webContents.mainFrame) {
+        return false
+    }
+
+    return isAppUrl(frame.url)
+}
+
+/**
+ * Registers an invoke handler that rejects calls from untrusted senders.
+ */
+function handleTrusted(channel: string, listener: (e: IpcMainInvokeEvent, ...args: any[]) => any) {
+    ipcMain.handle(channel, (e, ...args) => {
+        if (!isTrustedSender(e)) {
+            throw new Error(`Rejected ${channel} from an untrusted sender.`)
+        }
+
+        return listener(e, ...args)
+    })
+}
+
+/**
+ * Registers a message listener that ignores messages from untrusted senders.
+ */
+function onTrusted(channel: string, listener: (e: IpcMainEvent, ...args: any[]) => void) {
+    ipcMain.on(channel, (e, ...args) => {
+        if (!isTrustedSender(e)) {
+            return
+        }
+
+        listener(e, ...args)
+    })
+}
 
 /**
  * Whether the renderer has finished writing any pending edits and the window
@@ -155,7 +271,13 @@ function createWindow() {
         //...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
         icon: path.join(process.env.VITE_PUBLIC, 'safe.png'),
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js')
+            preload: path.join(__dirname, 'preload.js'),
+            // These match Electron's defaults, but are pinned so a dependency
+            // or config change can't weaken the renderer that holds the vault.
+            contextIsolation: true,
+            sandbox: true,
+            nodeIntegration: false,
+            webSecurity: true
         }
     })
 
@@ -208,10 +330,20 @@ function createWindow() {
         setTimeout(closeAfterFlush, FLUSH_BEFORE_CLOSE_TIMEOUT)
     })
 
-    //
+    // Links that open a new window go to the user's browser instead
     win.webContents.setWindowOpenHandler(({ url }) => {
-        shell.openExternal(url)
+        openExternalIfSafe(url)
         return { action: 'deny' }
+    })
+
+    // The window must only ever show the app itself
+    win.webContents.on('will-navigate', (e, url) => {
+        if (isAppUrl(url)) {
+            return
+        }
+
+        e.preventDefault()
+        openExternalIfSafe(url)
     })
 }
 
@@ -314,9 +446,7 @@ app.on('activate', () => {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
     // Process IPC messages
-    ipcMain.on('toggle-maximize-restore', (e) => {
-        //if (!validateSender(e.senderFrame)) { return; }
-
+    onTrusted('toggle-maximize-restore', (e) => {
         const webContents = e.sender
         const win = BrowserWindow.fromWebContents(webContents)
 
@@ -325,13 +455,11 @@ app.whenReady().then(async () => {
     })
 
     // Return whether the window is maximized
-    ipcMain.handle('is-maximized', () => {
+    handleTrusted('is-maximized', () => {
         return win?.isMaximized()
     })
 
-    ipcMain.on('minimize', (e) => {
-        //if (!validateSender(e.senderFrame)) { return; }
-
+    onTrusted('minimize', (e) => {
         const webContents = e.sender
         const win = BrowserWindow.fromWebContents(webContents)
 
@@ -339,9 +467,7 @@ app.whenReady().then(async () => {
         win?.minimize()
     })
 
-    ipcMain.on('close', (e) => {
-        //if (!validateSender(e.senderFrame)) { return; }
-
+    onTrusted('close', (e) => {
         const webContents = e.sender
         const win = BrowserWindow.fromWebContents(webContents)
 
@@ -350,7 +476,7 @@ app.whenReady().then(async () => {
     })
 
     // Listen for message to show the open file dialog
-    ipcMain.handle('show-open-file-dialog', async (_, defaultPath?: string) => {
+    handleTrusted('show-open-file-dialog', async (_, defaultPath?: string) => {
         if (!win) {
             return
         }
@@ -361,11 +487,16 @@ app.whenReady().then(async () => {
             filters
         }
 
-        return await dialog.showOpenDialog(win, options)
+        const result = await dialog.showOpenDialog(win, options)
+        if (!result.canceled) {
+            result.filePaths.forEach(rememberUserSelectedPath)
+        }
+
+        return result
     })
 
     // Listen for message to show the save file dialog
-    ipcMain.handle('show-save-file-dialog', async (_, defaultPath?: string) => {
+    handleTrusted('show-save-file-dialog', async (_, defaultPath?: string) => {
         if (!win) {
             return
         }
@@ -376,13 +507,20 @@ app.whenReady().then(async () => {
             filters
         }
 
-        return await dialog.showSaveDialog(win, options)
+        const result = await dialog.showSaveDialog(win, options)
+        if (!result.canceled && result.filePath) {
+            rememberUserSelectedPath(result.filePath)
+        }
+
+        return result
     })
 
-    ipcMain.handle('open-profile', async (_, fileName: string, passphrase: string) => {
+    handleTrusted('open-profile', async (_, fileName: string, passphrase: string) => {
         const ipcData: IPCData<string> = {}
 
         try {
+            assertUserSelectedPath(fileName)
+
             // Open the file for reading
             const encryptedData = await readFile(fileName)
             ipcData.data = await decryptFilePayloadAsync(encryptedData, passphrase)
@@ -396,10 +534,12 @@ app.whenReady().then(async () => {
         return ipcData
     })
 
-    ipcMain.handle('save-profile', async (_, fileName: string, profileData: string) => {
+    handleTrusted('save-profile', async (_, fileName: string, profileData: string) => {
         const ipcData: IPCData<string> = {}
 
         try {
+            assertUserSelectedPath(fileName)
+
             if (!unlockedProfilePassphrase) {
                 throw new Error('No unlocked profile session is active.')
             }
@@ -417,7 +557,7 @@ app.whenReady().then(async () => {
         return ipcData
     })
 
-    ipcMain.handle('set-session-passphrase', async (_, passphrase: string) => {
+    handleTrusted('set-session-passphrase', async (_, passphrase: string) => {
         const ipcData: IPCData<string> = {}
 
         try {
@@ -435,18 +575,18 @@ app.whenReady().then(async () => {
         return ipcData
     })
 
-    ipcMain.handle('lock-profile', async () => {
+    handleTrusted('lock-profile', async () => {
         unlockedProfilePassphrase = null
     })
 
     // The renderer has finished persisting its pending edits, so the window
     // that was held open by the close handler can now go away.
-    ipcMain.handle('flush-complete', () => {
+    handleTrusted('flush-complete', () => {
         closeAfterFlush()
     })
 
     // Handles saving the application configuration
-    ipcMain.handle('save-config', async (_, data: string) => {
+    handleTrusted('save-config', async (_, data: string) => {
         const ipcData: IPCData<string> = {}
         try {
             // Get the user data location
@@ -462,7 +602,7 @@ app.whenReady().then(async () => {
     })
 
     // Handles loading the config file
-    ipcMain.handle('load-config', async () => {
+    handleTrusted('load-config', async () => {
         const ipcData: IPCData<string> = {}
         try {
             // Get the user data location
@@ -478,7 +618,7 @@ app.whenReady().then(async () => {
     })
 
     // Handles getting the process platform
-    ipcMain.handle('get-platform', () => {
+    handleTrusted('get-platform', () => {
         return process.platform
     })
 

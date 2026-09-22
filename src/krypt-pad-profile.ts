@@ -46,7 +46,7 @@ class Profile {
                 item.starred = i.starred
 
                 // Add fields to the item
-                for (const field of i.fields) {
+                for (const field of i.fields ?? []) {
                     item.fields.push(new Field(field.name, field.value))
                 }
 

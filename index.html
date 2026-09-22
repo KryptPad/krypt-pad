@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/safe.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Vuetify injects theme styles inline; ws://localhost is the Vite dev server's HMR socket -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
     <title>Krypt Pad</title>
   </head>
   <body>

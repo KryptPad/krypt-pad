@@ -202,6 +202,19 @@ describe('KryptPadAPI', () => {
             expect(confirm).toHaveBeenCalledWith('Are you sure you want to delete this category?')
         })
 
+        it('saves the profile after deleting', async () => {
+            api.fileName.value = 'vault.kpf'
+            const profile = new Profile()
+            const category = new Category('cat-1')
+            profile.categories.push(category)
+            api.profile.value = profile
+            api.confirmDialog = { confirm: vi.fn().mockResolvedValue(true) } as any
+
+            await api.deleteCategory(category)
+
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledTimes(1)
+        })
+
         it('does not delete when the user cancels', async () => {
             const profile = new Profile()
             const category = new Category('cat-1')

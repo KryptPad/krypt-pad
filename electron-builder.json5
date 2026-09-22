@@ -13,6 +13,18 @@
     "dist",
     "dist-electron"
   ],
+  // Turn off Electron features the app doesn't use, so the binary can't be
+  // repurposed to run arbitrary code or have its app bundle swapped out.
+  "electronFuses": {
+    "runAsNode": false,
+    "enableNodeOptionsEnvironmentVariable": false,
+    "enableNodeCliInspectArguments": false,
+    "enableEmbeddedAsarIntegrityValidation": true,
+    "onlyLoadAppFromAsar": true,
+    "enableCookieEncryption": true,
+    // Flipping fuses invalidates the mac signature; re-sign ad hoc so arm64 builds still launch
+    "resetAdHocDarwinSignature": true
+  },
   "mac": {
     "icon": "public/safe.icns",
     "category": "public.app-category.utilities",

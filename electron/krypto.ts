@@ -9,10 +9,26 @@ const FILE_MAGIC = Buffer.from('KPF2')
 const FILE_VERSION = 1
 const AUTH_TAG_LENGTH = 16
 const FILE_HEADER_LENGTH = 28
-const FILE_SCRYPT_N = 32768
+// Cost used for newly written files (OWASP scrypt baseline). Older files keep
+// working because the cost they were written with is read from their header.
+const FILE_SCRYPT_N = 131072
 const FILE_SCRYPT_R = 8
 const FILE_SCRYPT_P = 1
-const FILE_SCRYPT_MAXMEM = 64 * 1024 * 1024
+
+// Bounds on the scrypt cost read from a file header. The header is only
+// authenticated after the key is derived, so a crafted file must not be able
+// to demand unbounded memory or CPU before the passphrase is checked.
+const MIN_SCRYPT_N = 16384
+const MAX_SCRYPT_N = 1048576
+const MAX_SCRYPT_R = 16
+const MAX_SCRYPT_P = 4
+const MAX_SCRYPT_MEMORY = 1024 * 1024 * 1024
+
+interface ScryptParams {
+    N: number
+    r: number
+    p: number
+}
 
 /**
  * Converts Node BinaryLike values to a Buffer.
@@ -33,19 +49,21 @@ const toBuffer = (value: crypto.BinaryLike): Buffer => {
  * Generates a secret key for whole-file encryption.
  * @param {crypto.BinaryLike} passphrase
  * @param {Buffer} salt
+ * @param {ScryptParams} params the scrypt cost parameters
  * @returns {Promise<Buffer>} the secret key
  */
-const generateFileSecretKey = function (passphrase: crypto.BinaryLike, salt: Buffer): Promise<Buffer> {
+const generateFileSecretKey = function (passphrase: crypto.BinaryLike, salt: Buffer, params: ScryptParams): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         crypto.scrypt(
             passphrase,
             salt,
             KEY_LENGTH,
             {
-                N: FILE_SCRYPT_N,
-                r: FILE_SCRYPT_R,
-                p: FILE_SCRYPT_P,
-                maxmem: FILE_SCRYPT_MAXMEM
+                N: params.N,
+                r: params.r,
+                p: params.p,
+                // Exactly what OpenSSL needs, plus headroom
+                maxmem: 128 * params.r * (params.N + params.p + 2) + 1024 * 1024
             },
             (err, secretKey) => {
                 if (!err) {
@@ -102,10 +120,19 @@ const parseFileHeader = function (cipherData: Buffer) {
     const saltLength = cipherData.readUInt8(5)
     const ivLength = cipherData.readUInt8(6)
     const authTagLength = cipherData.readUInt8(7)
+    const scryptParams: ScryptParams = {
+        N: cipherData.readUInt32LE(8),
+        r: cipherData.readUInt32LE(12),
+        p: cipherData.readUInt32LE(16)
+    }
     const keyLength = cipherData.readUInt32LE(20)
     const contentLength = cipherData.readUInt32LE(24)
 
     if (saltLength !== SALT_LENGTH || ivLength !== IV_LENGTH || authTagLength !== AUTH_TAG_LENGTH || keyLength !== KEY_LENGTH) {
+        throw new KryptPadError('The file encryption parameters are invalid.', KryptPadErrorCodes.DECRYPT_ERROR)
+    }
+
+    if (!isValidScryptParams(scryptParams)) {
         throw new KryptPadError('The file encryption parameters are invalid.', KryptPadErrorCodes.DECRYPT_ERROR)
     }
 
@@ -119,8 +146,30 @@ const parseFileHeader = function (cipherData: Buffer) {
         saltLength,
         ivLength,
         authTagLength,
-        contentLength
+        contentLength,
+        scryptParams
     }
+}
+
+/**
+ * Checks that scrypt parameters read from a file are within safe bounds.
+ * @param {ScryptParams} params
+ * @returns {boolean}
+ */
+const isValidScryptParams = function ({ N, r, p }: ScryptParams): boolean {
+    // N must be a power of two
+    const isPowerOfTwo = N > 0 && (N & (N - 1)) === 0
+
+    return (
+        isPowerOfTwo &&
+        N >= MIN_SCRYPT_N &&
+        N <= MAX_SCRYPT_N &&
+        r >= 1 &&
+        r <= MAX_SCRYPT_R &&
+        p >= 1 &&
+        p <= MAX_SCRYPT_P &&
+        128 * N * r <= MAX_SCRYPT_MEMORY
+    )
 }
 
 /**
@@ -131,7 +180,7 @@ const parseFileHeader = function (cipherData: Buffer) {
  */
 const encryptFilePayloadAsync = async (text: crypto.BinaryLike, passphrase: crypto.BinaryLike): Promise<Buffer> => {
     const salt = crypto.randomBytes(SALT_LENGTH)
-    const secretKey = await generateFileSecretKey(passphrase, salt)
+    const secretKey = await generateFileSecretKey(passphrase, salt, { N: FILE_SCRYPT_N, r: FILE_SCRYPT_R, p: FILE_SCRYPT_P })
     const iv = crypto.randomBytes(IV_LENGTH)
     const plainText = toBuffer(text)
     const header = createFileHeader(plainText.length)
@@ -154,7 +203,7 @@ const encryptFilePayloadAsync = async (text: crypto.BinaryLike, passphrase: cryp
  * @returns {Promise<string>} decrypted file payload
  */
 const decryptFilePayloadAsync = async (cipherData: Buffer, passphrase: crypto.BinaryLike): Promise<string> => {
-    const { headerLength, saltLength, ivLength, authTagLength, contentLength } = parseFileHeader(cipherData)
+    const { headerLength, saltLength, ivLength, authTagLength, contentLength, scryptParams } = parseFileHeader(cipherData)
     const saltOffset = headerLength
     const ivOffset = saltOffset + saltLength
     const contentOffset = ivOffset + ivLength
@@ -162,7 +211,7 @@ const decryptFilePayloadAsync = async (cipherData: Buffer, passphrase: crypto.Bi
 
     const header = Buffer.from(cipherData.subarray(0, headerLength))
     const salt = Buffer.from(cipherData.subarray(saltOffset, ivOffset))
-    const secretKey = await generateFileSecretKey(passphrase, salt)
+    const secretKey = await generateFileSecretKey(passphrase, salt, scryptParams)
     const iv = Buffer.from(cipherData.subarray(ivOffset, contentOffset))
     const content = Buffer.from(cipherData.subarray(contentOffset, authTagOffset))
     const authTag = Buffer.from(cipherData.subarray(authTagOffset, authTagOffset + authTagLength))

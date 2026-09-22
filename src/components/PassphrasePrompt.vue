@@ -48,9 +48,17 @@ const validationError = ref<string | undefined>()
 const dialogOpen = ref(false)
 
 /**
+ * Whether the user confirmed the dialog with OK. The dialog can also be closed
+ * with Esc or a click outside it, which bypasses validation, so any close that
+ * was not an accepted OK is treated as a cancel.
+ */
+let accepted = false
+
+/**
  * Shows the passphrase prompt dialog
  */
 function show() {
+    accepted = false
     dialogOpen.value = true
 }
 
@@ -84,6 +92,7 @@ function ok() {
     }
 
     // Close dialog.
+    accepted = true
     dialogOpen.value = false
 }
 
@@ -107,8 +116,9 @@ function clearInputs() {
 
 watch(dialogOpen, (newValue) => {
     if (!newValue) {
-        // The dialog was closed.
-        emit('closed', passphrase.value)
+        // The dialog was closed. Only an accepted OK hands back the passphrase.
+        emit('closed', accepted ? passphrase.value : undefined)
+        accepted = false
         // Clear the passphrase from the input.
         clearInputs()
     }
