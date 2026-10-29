@@ -60,6 +60,14 @@ class IPCBridge {
         await this.desktopApi.flushComplete()
     }
 
+    /**
+     * Tells the main process that the app has mounted, so it can close the
+     * splash screen and show the main window.
+     */
+    appReady() {
+        this.desktopApi.appReady()
+    }
+
     onAppEvent(channel: KryptPadEventChannel, listener: (...args: any[]) => void) {
         this.desktopApi.onAppEvent(channel, listener)
     }

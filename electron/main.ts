@@ -58,6 +58,8 @@ enum OSType {
 const osType: OSType = process.platform === 'win32' ? OSType.Windows : process.platform === 'darwin' ? OSType.MacOS : OSType.Linux
 
 let win: BrowserWindow | null
+// Shown while the main window loads, then closed once the app is ready
+let splash: BrowserWindow | null = null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
@@ -218,9 +220,11 @@ let quitRequested = false
 const FLUSH_BEFORE_CLOSE_TIMEOUT = 3000
 
 /**
- * How long to wait for the first paint before showing the window anyway.
+ * How long to wait for the app to report that it is ready before showing the
+ * main window anyway. The splash screen covers the wait, so this is only a
+ * safety net for a renderer that never finishes loading.
  */
-const SHOW_WINDOW_TIMEOUT = 5000
+const SHOW_WINDOW_TIMEOUT = 60000
 
 /**
  * Closes the main window now that pending edits are safely on disk, resuming
@@ -276,6 +280,56 @@ async function writeFileAtomic(filePath: string, data: Uint8Array): Promise<void
 }
 
 /**
+ * Creates the splash screen window, which shows the logo while the main
+ * window is still loading. It loads a static page with no script, so it opens
+ * almost instantly.
+ */
+function createSplashWindow() {
+    splash = new BrowserWindow({
+        width: 360,
+        height: 300,
+        frame: false,
+        resizable: false,
+        movable: true,
+        minimizable: false,
+        maximizable: false,
+        fullscreenable: false,
+        center: true,
+        show: false,
+        backgroundColor: '#121212',
+        title: 'Krypt Pad',
+        icon: path.join(process.env.VITE_PUBLIC, 'safe.png'),
+        webPreferences: {
+            contextIsolation: true,
+            sandbox: true,
+            nodeIntegration: false,
+            webSecurity: true
+        }
+    })
+
+    splash.once('ready-to-show', () => splash?.show())
+    splash.on('closed', () => {
+        splash = null
+    })
+
+    // The splash screen never navigates or opens windows
+    splash.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    splash.webContents.on('will-navigate', (e) => e.preventDefault())
+
+    splash.loadFile(path.join(process.env.VITE_PUBLIC, 'splash.html'))
+}
+
+/**
+ * Closes the splash screen, if it is still open.
+ */
+function closeSplashWindow() {
+    if (splash && !splash.isDestroyed()) {
+        splash.close()
+    }
+    splash = null
+}
+
+/**
  * Creates the main browser window
  */
 function createWindow() {
@@ -297,8 +351,8 @@ function createWindow() {
         width: mainWindowState.width,
         height: mainWindowState.height,
         titleBarStyle: 'hidden',
-        // Stay hidden until the splash screen has painted, and match its
-        // background, so the user never sees a blank white window.
+        // Stay hidden behind the splash screen until the app has loaded, and
+        // match its background so the user never sees a blank white window.
         show: false,
         backgroundColor: '#121212',
         //...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
@@ -319,23 +373,41 @@ function createWindow() {
         win.webContents.openDevTools()
     }
 
-    // Show the window once the page (and with it the splash screen) has been
-    // painted. Maximizing would show the window early, so it happens here too.
+    // Show the window once the app reports it has mounted, swapping it in for
+    // the splash screen. Maximizing would show the window early, so it
+    // happens here too.
+    const mainWindow = win
     let windowShown = false
     const showWindow = () => {
-        if (windowShown || !win || win.isDestroyed()) {
+        if (windowShown || mainWindow.isDestroyed()) {
             return
         }
 
         windowShown = true
+        clearTimeout(showWindowTimer)
+        ipcMain.removeListener('app-ready', onAppReady)
+
         if (mainWindowState.isMaximized) {
-            win.maximize()
+            mainWindow.maximize()
         }
-        win.show()
+        mainWindow.show()
+        closeSplashWindow()
     }
-    win.once('ready-to-show', showWindow)
-    // Never leave the user with no window if the first paint is slow or the page fails to load
-    setTimeout(showWindow, SHOW_WINDOW_TIMEOUT)
+    const onAppReady = (e: IpcMainEvent) => {
+        if (e.sender === mainWindow.webContents && isTrustedSender(e)) {
+            showWindow()
+        }
+    }
+    ipcMain.on('app-ready', onAppReady)
+    // Never leave the user staring at the splash screen if the app fails to load
+    mainWindow.webContents.once('did-fail-load', showWindow)
+    mainWindow.webContents.once('render-process-gone', showWindow)
+    const showWindowTimer = setTimeout(showWindow, SHOW_WINDOW_TIMEOUT)
+    mainWindow.on('closed', () => {
+        clearTimeout(showWindowTimer)
+        ipcMain.removeListener('app-ready', onAppReady)
+        closeSplashWindow()
+    })
 
     // Register listeners on the window, so we can update the state
     // automatically (the listeners will be removed when the window is closed)
@@ -451,8 +523,11 @@ if (!app.requestSingleInstanceLock()) {
     app.quit()
 } else {
     app.on('second-instance', () => {
-        // Surface the window the user already has rather than opening another
-        if (win) {
+        // Surface the window the user already has rather than opening another.
+        // While the app is still loading, that is the splash screen.
+        if (splash && !splash.isDestroyed()) {
+            splash.focus()
+        } else if (win) {
             if (win.isMinimized()) {
                 win.restore()
             }
@@ -485,13 +560,20 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+        createSplashWindow()
+        createWindow()
+    }
 })
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
+    // Put the splash screen up first, so something is on screen while the
+    // main window loads
+    createSplashWindow()
+
     // Process IPC messages
     onTrusted('toggle-maximize-restore', (e) => {
         const webContents = e.sender

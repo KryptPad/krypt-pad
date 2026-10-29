@@ -21,6 +21,9 @@ const api = {
     flushComplete(): Promise<any> {
         return ipcRenderer.invoke('flush-complete')
     },
+    appReady() {
+        ipcRenderer.send('app-ready')
+    },
     saveConfig(data: string): Promise<any> {
         return ipcRenderer.invoke('save-config', data)
     },

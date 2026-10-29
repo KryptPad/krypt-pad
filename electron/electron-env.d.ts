@@ -29,6 +29,7 @@ interface KryptPadDesktopApi {
     setSessionPassphrase(passphrase: string): Promise<any>
     lockProfile(): Promise<any>
     flushComplete(): Promise<any>
+    appReady(): void
     saveConfig(data: string): Promise<any>
     loadConfig(): Promise<any>
     showOpenFileDialog(defaultPath?: string): Promise<any>

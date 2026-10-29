@@ -13,7 +13,7 @@ import '@/styles/app.scss'
 // Main component
 import App from '@/App.vue'
 
-function loadApp(platform: string, appSettings?: SettingsManager) {
+function loadApp(ipcBridge: IPCBridge, platform: string, appSettings?: SettingsManager) {
     // Configure vuetify
     const vuetify = createVuetify({
         defaults: {
@@ -47,23 +47,8 @@ function loadApp(platform: string, appSettings?: SettingsManager) {
 
     app.mount('#app')
 
-    hideSplash()
-}
-
-/**
- * Fades out the splash screen from index.html and removes it once the fade
- * has finished, so it can't sit on top of the app.
- */
-function hideSplash() {
-    const splash = document.getElementById('splash')
-    if (!splash) {
-        return
-    }
-
-    splash.addEventListener('transitionend', () => splash.remove(), { once: true })
-    splash.classList.add('splash-hidden')
-    // transitionend doesn't fire if transitions are disabled, so remove it regardless
-    setTimeout(() => splash.remove(), 500)
+    // The app is on screen, so the main window can replace the splash screen
+    ipcBridge.appReady()
 }
 
 /**
@@ -81,7 +66,7 @@ async function init() {
     }
 
     // Initialize the app with the loaded settings
-    loadApp(platform, appSettings)
+    loadApp(ipcBridge, platform, appSettings)
 }
 
 init()
