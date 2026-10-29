@@ -46,6 +46,24 @@ function loadApp(platform: string, appSettings?: SettingsManager) {
     app.use(vuetify)
 
     app.mount('#app')
+
+    hideSplash()
+}
+
+/**
+ * Fades out the splash screen from index.html and removes it once the fade
+ * has finished, so it can't sit on top of the app.
+ */
+function hideSplash() {
+    const splash = document.getElementById('splash')
+    if (!splash) {
+        return
+    }
+
+    splash.addEventListener('transitionend', () => splash.remove(), { once: true })
+    splash.classList.add('splash-hidden')
+    // transitionend doesn't fire if transitions are disabled, so remove it regardless
+    setTimeout(() => splash.remove(), 500)
 }
 
 /**

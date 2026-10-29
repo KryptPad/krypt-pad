@@ -218,6 +218,11 @@ let quitRequested = false
 const FLUSH_BEFORE_CLOSE_TIMEOUT = 3000
 
 /**
+ * How long to wait for the first paint before showing the window anyway.
+ */
+const SHOW_WINDOW_TIMEOUT = 5000
+
+/**
  * Closes the main window now that pending edits are safely on disk, resuming
  * a quit if that is what the user originally asked for.
  */
@@ -292,6 +297,10 @@ function createWindow() {
         width: mainWindowState.width,
         height: mainWindowState.height,
         titleBarStyle: 'hidden',
+        // Stay hidden until the splash screen has painted, and match its
+        // background, so the user never sees a blank white window.
+        show: false,
+        backgroundColor: '#121212',
         //...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
         icon: path.join(process.env.VITE_PUBLIC, 'safe.png'),
         webPreferences: {
@@ -310,9 +319,23 @@ function createWindow() {
         win.webContents.openDevTools()
     }
 
-    if (mainWindowState.isMaximized) {
-        win.maximize()
+    // Show the window once the page (and with it the splash screen) has been
+    // painted. Maximizing would show the window early, so it happens here too.
+    let windowShown = false
+    const showWindow = () => {
+        if (windowShown || !win || win.isDestroyed()) {
+            return
+        }
+
+        windowShown = true
+        if (mainWindowState.isMaximized) {
+            win.maximize()
+        }
+        win.show()
     }
+    win.once('ready-to-show', showWindow)
+    // Never leave the user with no window if the first paint is slow or the page fails to load
+    setTimeout(showWindow, SHOW_WINDOW_TIMEOUT)
 
     // Register listeners on the window, so we can update the state
     // automatically (the listeners will be removed when the window is closed)
