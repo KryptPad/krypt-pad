@@ -22,7 +22,7 @@ import { writeFile, readFile, open, rename, unlink } from 'fs/promises'
 import crypto from 'node:crypto'
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts'
 import { ensureExtension } from '../src/utils.ts'
-import { decryptFilePayloadAsync, encryptFilePayloadAsync } from './krypto'
+import { decryptFilePayloadAsync, deriveFileKeyAsync, destroyFileKey, encryptFilePayload, type FileKey } from './krypto'
 import { IPCData } from './ipc.ts'
 import { KryptPadError } from '../common/error-utils'
 
@@ -70,7 +70,31 @@ const filters: Electron.FileFilter[] = [
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: true, standard: true } }])
 
-let unlockedProfilePassphrase: string | null = null
+/**
+ * The derived key for the unlocked profile. The passphrase itself is never
+ * kept: it is turned into a key once, when the profile is opened or a new
+ * passphrase is set, and each save reuses that key.
+ */
+let unlockedFileKey: FileKey | null = null
+
+/**
+ * Bumped whenever the session key is replaced or cleared. A key derivation
+ * still running when the session changes must not install its result, or a
+ * lock or a newer passphrase could be undone by a slower, older request.
+ */
+let fileKeyGeneration = 0
+
+/**
+ * Replaces the session key, wiping the previous one.
+ * @param fileKey The new key, or null to lock
+ */
+function setUnlockedFileKey(fileKey: FileKey | null) {
+    fileKeyGeneration++
+    if (unlockedFileKey !== fileKey) {
+        destroyFileKey(unlockedFileKey)
+    }
+    unlockedFileKey = fileKey
+}
 
 /**
  * Files the user picked in an open or save dialog this session. Profiles can
@@ -523,8 +547,17 @@ app.whenReady().then(async () => {
 
             // Open the file for reading
             const encryptedData = await readFile(fileName)
-            ipcData.data = await decryptFilePayloadAsync(encryptedData, passphrase)
-            unlockedProfilePassphrase = passphrase
+            const generation = fileKeyGeneration
+            const { data, fileKey } = await decryptFilePayloadAsync(encryptedData, passphrase)
+
+            if (generation !== fileKeyGeneration) {
+                // The session changed while the key was being derived
+                destroyFileKey(fileKey)
+                throw new Error('The profile session changed while the file was being opened.')
+            }
+
+            setUnlockedFileKey(fileKey)
+            ipcData.data = data
         } catch (ex) {
             ipcData.error = KryptPadError.fromError(ex)
 
@@ -540,12 +573,13 @@ app.whenReady().then(async () => {
         try {
             assertUserSelectedPath(fileName)
 
-            if (!unlockedProfilePassphrase) {
+            if (!unlockedFileKey) {
                 throw new Error('No unlocked profile session is active.')
             }
 
-            // Open file for writing
-            const encryptedData = await encryptFilePayloadAsync(profileData, unlockedProfilePassphrase)
+            // Encrypt with the session key. This is synchronous, so a lock
+            // arriving mid-save can't wipe the key out from under it.
+            const encryptedData = encryptFilePayload(profileData, unlockedFileKey)
             // Write atomically so a crash mid-write can't corrupt the vault
             await writeFileAtomic(fileName, new Uint8Array(encryptedData))
         } catch (ex) {
@@ -565,7 +599,16 @@ app.whenReady().then(async () => {
                 throw new Error('Passphrase is required.')
             }
 
-            unlockedProfilePassphrase = passphrase
+            const generation = fileKeyGeneration
+            const fileKey = await deriveFileKeyAsync(passphrase)
+
+            if (generation !== fileKeyGeneration) {
+                // Locked or replaced while deriving; this key is stale
+                destroyFileKey(fileKey)
+                throw new Error('The profile session changed while the passphrase was being set.')
+            }
+
+            setUnlockedFileKey(fileKey)
         } catch (ex) {
             ipcData.error = KryptPadError.fromError(ex)
 
@@ -576,7 +619,7 @@ app.whenReady().then(async () => {
     })
 
     handleTrusted('lock-profile', async () => {
-        unlockedProfilePassphrase = null
+        setUnlockedFileKey(null)
     })
 
     // The renderer has finished persisting its pending edits, so the window

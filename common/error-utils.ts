@@ -4,7 +4,10 @@
 enum KryptPadErrorCodes {
     OK,
     GENERIC,
-    DECRYPT_ERROR
+    /** The passphrase is wrong or the encrypted content was altered */
+    DECRYPT_ERROR,
+    /** The file is not a Krypt Pad file, is corrupted, or uses an unsupported format */
+    INVALID_FILE
 
 }
 

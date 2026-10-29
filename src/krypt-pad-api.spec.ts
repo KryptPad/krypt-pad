@@ -284,6 +284,27 @@ describe('KryptPadAPI', () => {
             expect(ipcBridgeMock.openProfile).toHaveBeenCalledTimes(3)
             expect(api.fileOpened.value).toBe(true)
         })
+
+        it('stops asking for the passphrase when the file itself is invalid', async () => {
+            const requirePassphrase = vi.fn().mockResolvedValue('secret')
+            api.onRequirePassphrase(requirePassphrase)
+            api.alertDialog = { error: vi.fn() } as any
+
+            ipcBridgeMock.showOpenFileDialogAsync.mockResolvedValueOnce({
+                canceled: false,
+                filePaths: ['/data/not-a-vault.kpf']
+            })
+            ipcBridgeMock.openProfile.mockRejectedValueOnce(
+                new KryptPadError('The file format is invalid or unsupported.', KryptPadErrorCodes.INVALID_FILE)
+            )
+
+            await api.openExistingFileAsync()
+
+            expect(requirePassphrase).toHaveBeenCalledTimes(1)
+            expect(ipcBridgeMock.openProfile).toHaveBeenCalledTimes(1)
+            expect(api.fileOpened.value).toBe(false)
+            expect(api.fileName.value).toBeUndefined()
+        })
     })
 
     describe('createNewFileAsync', () => {

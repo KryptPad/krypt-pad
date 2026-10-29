@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import { describe, it, expect } from 'vitest'
-import { encryptFilePayloadAsync, decryptFilePayloadAsync } from './krypto'
+import { deriveFileKeyAsync, destroyFileKey, encryptFilePayload, decryptFilePayloadAsync } from './krypto'
 import { KryptPadError, KryptPadErrorCodes } from '../common/error-utils'
 
 /**
@@ -24,6 +24,21 @@ const OFFSET_SCRYPT_P = 16
 const OFFSET_KEY_LENGTH = 20
 
 const PASSPHRASE = 'correct horse battery staple'
+const WRONG_PASSPHRASE_MESSAGE = 'Could not open the file. Please check the passphrase and try again.'
+
+/**
+ * Encrypts with a freshly derived key, the way a new file is written.
+ */
+const encryptFilePayloadAsync = async (text: string, passphrase: string): Promise<Buffer> => {
+    return encryptFilePayload(text, await deriveFileKeyAsync(passphrase))
+}
+
+/**
+ * Decrypts and returns only the plaintext.
+ */
+const decryptText = async (cipherData: Buffer, passphrase: string): Promise<string> => {
+    return (await decryptFilePayloadAsync(cipherData, passphrase)).data
+}
 
 const flipByte = (buffer: Buffer, offset: number): Buffer => {
     const copy = Buffer.from(buffer)
@@ -45,18 +60,30 @@ const withUInt32LE = (buffer: Buffer, offset: number, value: number): Buffer => 
 
 const contentOffset = () => HEADER_LENGTH + SALT_LENGTH + IV_LENGTH
 
-const expectDecryptFailure = async (promise: Promise<string>, expectedMessage?: string) => {
+const expectFailure = async (promise: Promise<unknown>, expectedCode: KryptPadErrorCodes, expectedMessage?: string) => {
+    let rejected = false
     try {
         await promise
-        expect.fail('Expected the promise to reject')
     } catch (err) {
+        rejected = true
         expect(err).toBeInstanceOf(KryptPadError)
-        expect((err as KryptPadError).code).toBe(KryptPadErrorCodes.DECRYPT_ERROR)
+        expect((err as KryptPadError).code).toBe(expectedCode)
         if (expectedMessage !== undefined) {
             expect((err as KryptPadError).message).toBe(expectedMessage)
         }
     }
+    if (!rejected) {
+        expect.fail('Expected the promise to reject')
+    }
 }
+
+/** A wrong passphrase or altered content: the user may retry. */
+const expectDecryptFailure = (promise: Promise<unknown>, expectedMessage?: string) =>
+    expectFailure(promise, KryptPadErrorCodes.DECRYPT_ERROR, expectedMessage)
+
+/** An unusable file: retrying with another passphrase can't help. */
+const expectInvalidFile = (promise: Promise<unknown>, expectedMessage?: string) =>
+    expectFailure(promise, KryptPadErrorCodes.INVALID_FILE, expectedMessage)
 
 describe('encryptFilePayloadAsync / decryptFilePayloadAsync round-trip', () => {
     it.each([
@@ -65,7 +92,7 @@ describe('encryptFilePayloadAsync / decryptFilePayloadAsync round-trip', () => {
         ['multi-byte unicode content', '日本語のパスワード 🔒 café']
     ])('round-trips %s', async (_label, text) => {
         const encrypted = await encryptFilePayloadAsync(text, PASSPHRASE)
-        const decrypted = await decryptFilePayloadAsync(encrypted, PASSPHRASE)
+        const decrypted = await decryptText(encrypted, PASSPHRASE)
         expect(decrypted).toBe(text)
     })
 
@@ -76,8 +103,8 @@ describe('encryptFilePayloadAsync / decryptFilePayloadAsync round-trip', () => {
 
         expect(first.equals(second)).toBe(false)
 
-        expect(await decryptFilePayloadAsync(first, PASSPHRASE)).toBe(text)
-        expect(await decryptFilePayloadAsync(second, PASSPHRASE)).toBe(text)
+        expect(await decryptText(first, PASSPHRASE)).toBe(text)
+        expect(await decryptText(second, PASSPHRASE)).toBe(text)
     })
 })
 
@@ -86,7 +113,7 @@ describe('decryptFilePayloadAsync wrong passphrase / tamper detection', () => {
         const encrypted = await encryptFilePayloadAsync('secret content', PASSPHRASE)
         await expectDecryptFailure(
             decryptFilePayloadAsync(encrypted, 'not the right passphrase'),
-            'Could not open the file. Please check the passphrase and try again.'
+            WRONG_PASSPHRASE_MESSAGE
         )
     })
 
@@ -95,7 +122,7 @@ describe('decryptFilePayloadAsync wrong passphrase / tamper detection', () => {
         const tampered = flipByte(encrypted, contentOffset())
         await expectDecryptFailure(
             decryptFilePayloadAsync(tampered, PASSPHRASE),
-            'Could not open the file. Please check the passphrase and try again.'
+            WRONG_PASSPHRASE_MESSAGE
         )
     })
 
@@ -104,7 +131,7 @@ describe('decryptFilePayloadAsync wrong passphrase / tamper detection', () => {
         const tampered = flipByte(encrypted, encrypted.length - 1)
         await expectDecryptFailure(
             decryptFilePayloadAsync(tampered, PASSPHRASE),
-            'Could not open the file. Please check the passphrase and try again.'
+            WRONG_PASSPHRASE_MESSAGE
         )
     })
 
@@ -113,7 +140,7 @@ describe('decryptFilePayloadAsync wrong passphrase / tamper detection', () => {
         const tampered = withUInt32LE(encrypted, OFFSET_SCRYPT_N, 16384)
         await expectDecryptFailure(
             decryptFilePayloadAsync(tampered, PASSPHRASE),
-            'Could not open the file. Please check the passphrase and try again.'
+            WRONG_PASSPHRASE_MESSAGE
         )
     })
 })
@@ -156,7 +183,7 @@ describe('decryptFilePayloadAsync scrypt cost from the header', () => {
 
     it('opens files written with the earlier default cost (N=32768)', async () => {
         const legacy = buildEnvelope('legacy vault', PASSPHRASE, 32768, 8, 1)
-        expect(await decryptFilePayloadAsync(legacy, PASSPHRASE)).toBe('legacy vault')
+        expect(await decryptText(legacy, PASSPHRASE)).toBe('legacy vault')
     })
 
     it.each([
@@ -167,20 +194,21 @@ describe('decryptFilePayloadAsync scrypt cost from the header', () => {
         ['r above the maximum', 32768, 17, 1],
         ['p of zero', 32768, 8, 0],
         ['p above the maximum', 32768, 8, 5],
-        ['a memory cost above the limit', 1048576, 16, 1]
+        ['a memory cost above the limit', 1048576, 16, 1],
+        ['a 1 GiB memory cost', 1048576, 8, 1]
     ])('rejects %s before deriving a key', async (_label, N, r, p) => {
         const encrypted = await encryptFilePayloadAsync('secret content', PASSPHRASE)
         let tampered = withUInt32LE(encrypted, OFFSET_SCRYPT_N, N)
         tampered = withUInt32LE(tampered, OFFSET_SCRYPT_R, r)
         tampered = withUInt32LE(tampered, OFFSET_SCRYPT_P, p)
-        await expectDecryptFailure(decryptFilePayloadAsync(tampered, PASSPHRASE), 'The file encryption parameters are invalid.')
+        await expectInvalidFile(decryptFilePayloadAsync(tampered, PASSPHRASE), 'The file encryption parameters are invalid.')
     })
 })
 
 describe('decryptFilePayloadAsync header validation', () => {
     it('fails on a buffer shorter than the minimum valid envelope', async () => {
         const tooShort = Buffer.alloc(HEADER_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH - 1)
-        await expectDecryptFailure(
+        await expectInvalidFile(
             decryptFilePayloadAsync(tooShort, PASSPHRASE),
             'The file is invalid or corrupted.'
         )
@@ -189,7 +217,7 @@ describe('decryptFilePayloadAsync header validation', () => {
     it('fails on an invalid magic number', async () => {
         const encrypted = await encryptFilePayloadAsync('secret content', PASSPHRASE)
         const tampered = flipByte(encrypted, OFFSET_MAGIC)
-        await expectDecryptFailure(
+        await expectInvalidFile(
             decryptFilePayloadAsync(tampered, PASSPHRASE),
             'The file format is invalid or unsupported.'
         )
@@ -198,7 +226,7 @@ describe('decryptFilePayloadAsync header validation', () => {
     it('fails on an unsupported file version', async () => {
         const encrypted = await encryptFilePayloadAsync('secret content', PASSPHRASE)
         const tampered = withUInt8(encrypted, OFFSET_VERSION, 99)
-        await expectDecryptFailure(
+        await expectInvalidFile(
             decryptFilePayloadAsync(tampered, PASSPHRASE),
             'The file format version is unsupported.'
         )
@@ -212,7 +240,7 @@ describe('decryptFilePayloadAsync header validation', () => {
     ])('fails when the declared %s does not match the actual encryption parameters', async (_name, _offset, wrongValue, mutate) => {
         const encrypted = await encryptFilePayloadAsync('secret content', PASSPHRASE)
         const tampered = mutate(encrypted, wrongValue)
-        await expectDecryptFailure(
+        await expectInvalidFile(
             decryptFilePayloadAsync(tampered, PASSPHRASE),
             'The file encryption parameters are invalid.'
         )
@@ -221,9 +249,89 @@ describe('decryptFilePayloadAsync header validation', () => {
     it('fails when the declared content length does not match the actual buffer size', async () => {
         const encrypted = await encryptFilePayloadAsync('secret content', PASSPHRASE)
         const tampered = withUInt32LE(encrypted, HEADER_LENGTH - 4, 9999)
-        await expectDecryptFailure(
+        await expectInvalidFile(
             decryptFilePayloadAsync(tampered, PASSPHRASE),
             'The file is truncated or corrupted.'
         )
+    })
+})
+
+describe('session file key', () => {
+    it('reuses one derived key across saves with a fresh IV each time', async () => {
+        const fileKey = await deriveFileKeyAsync(PASSPHRASE)
+        const first = encryptFilePayload('save one', fileKey)
+        const second = encryptFilePayload('save two', fileKey)
+
+        const salt = (buf: Buffer) => buf.subarray(HEADER_LENGTH, HEADER_LENGTH + SALT_LENGTH)
+        const iv = (buf: Buffer) => buf.subarray(HEADER_LENGTH + SALT_LENGTH, contentOffset())
+
+        expect(salt(first).equals(salt(second))).toBe(true)
+        expect(iv(first).equals(iv(second))).toBe(false)
+        expect(await decryptText(first, PASSPHRASE)).toBe('save one')
+        expect(await decryptText(second, PASSPHRASE)).toBe('save two')
+    })
+
+    it('returns a key from decrypt that keeps writing the same file', async () => {
+        const encrypted = await encryptFilePayloadAsync('original', PASSPHRASE)
+        const { data, fileKey } = await decryptFilePayloadAsync(encrypted, PASSPHRASE)
+        expect(data).toBe('original')
+
+        // A current-format file keeps its salt, so no extra derivation was needed
+        expect(fileKey.salt.equals(encrypted.subarray(HEADER_LENGTH, HEADER_LENGTH + SALT_LENGTH))).toBe(true)
+
+        const resaved = encryptFilePayload('edited', fileKey)
+        expect(await decryptText(resaved, PASSPHRASE)).toBe('edited')
+    })
+
+    it('wipes the key when destroyed', async () => {
+        const fileKey = await deriveFileKeyAsync(PASSPHRASE)
+        destroyFileKey(fileKey)
+        expect(fileKey.key.equals(Buffer.alloc(fileKey.key.length))).toBe(true)
+    })
+
+    it('upgrades a file written with the earlier default cost on the next save', async () => {
+        const legacy = buildEnvelope('legacy vault', PASSPHRASE, 32768, 8, 1)
+        const { fileKey } = await decryptFilePayloadAsync(legacy, PASSPHRASE)
+        expect(fileKey.params).toEqual({ N: 131072, r: 8, p: 1 })
+
+        const resaved = encryptFilePayload('legacy vault', fileKey)
+        expect(resaved.readUInt32LE(OFFSET_SCRYPT_N)).toBe(131072)
+        expect(await decryptText(resaved, PASSPHRASE)).toBe('legacy vault')
+    })
+})
+
+describe('passphrase Unicode normalization', () => {
+    // The same visible passphrase, as one code point per accented letter (NFC)
+    // and as a base letter plus a combining accent (NFD)
+    const COMPOSED = 'caf\u00e9 cr\u00e8me'
+    const DECOMPOSED = 'cafe\u0301 cre\u0300me'
+
+    it('treats composed and decomposed forms of a passphrase as the same', async () => {
+        expect(COMPOSED).not.toBe(DECOMPOSED)
+
+        const fromDecomposed = await encryptFilePayloadAsync('vault', DECOMPOSED)
+        expect(await decryptText(fromDecomposed, COMPOSED)).toBe('vault')
+
+        const fromComposed = await encryptFilePayloadAsync('vault', COMPOSED)
+        expect(await decryptText(fromComposed, DECOMPOSED)).toBe('vault')
+    })
+
+    it('still opens a file written with an unnormalized passphrase, and normalizes it on the next save', async () => {
+        // Written by an earlier build that used the passphrase bytes as typed
+        const legacy = buildEnvelope('old vault', DECOMPOSED, 131072, 8, 1)
+
+        // The exact passphrase still opens it
+        const { data, fileKey } = await decryptFilePayloadAsync(legacy, DECOMPOSED)
+        expect(data).toBe('old vault')
+
+        // ...and the next save can be opened with either form
+        const resaved = encryptFilePayload(data, fileKey)
+        expect(await decryptText(resaved, COMPOSED)).toBe('old vault')
+        expect(await decryptText(resaved, DECOMPOSED)).toBe('old vault')
+    })
+
+    it('fails cleanly when neither form matches', async () => {
+        const encrypted = await encryptFilePayloadAsync('vault', COMPOSED)
+        await expectDecryptFailure(decryptFilePayloadAsync(encrypted, 'cafe\u0301 wrong'), WRONG_PASSPHRASE_MESSAGE)
     })
 })
