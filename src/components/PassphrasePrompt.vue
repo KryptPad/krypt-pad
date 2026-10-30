@@ -5,7 +5,7 @@
             <v-card-title>{{ passphraseIsNew ? 'Enter New Passphrase' : 'Enter Passphrase' }}</v-card-title>
             <v-card-text>
                 <p v-if="passphraseIsNew">
-                    Please enter a master passphrase to encrypt your data. Keep it safe and secure. If you lose it, <span class="text-error">THERE IS NO WAY TO RECOVER IT!!!</span>
+                    Please enter a master passphrase to encrypt your data. Keep it safe and secure. If you lose it, <strong class="text-error">THERE IS NO WAY TO RECOVER IT!!!</strong>
                 </p>
                 <p v-else>Please enter your passphrase to decrypt your data.</p>
                 <v-text-field :autofocus="true" v-model="passphrase" type="password" class="mt-3" label="Passphrase"></v-text-field>
