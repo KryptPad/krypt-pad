@@ -286,7 +286,7 @@ async function writeFileAtomic(filePath: string, data: Uint8Array): Promise<void
  */
 function createSplashWindow() {
     splash = new BrowserWindow({
-        width: 360,
+        width: 450,
         height: 300,
         frame: false,
         resizable: false,
