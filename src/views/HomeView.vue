@@ -19,12 +19,12 @@
         <v-card>
             <v-list>
                 <!-- All items -->
-                <v-list-item @click="categorySelected(null)" prepend-icon="mdi-all-inclusive">
-                    <v-list-item-title>ALL</v-list-item-title>
+                <v-list-item @click="categorySelected(allCategory)" prepend-icon="mdi-all-inclusive" :active="selectedCategory?.id === ALL">
+                    <v-list-item-title>{{ allCategory.name }}</v-list-item-title>
                 </v-list-item>
 
-                <v-list-item @click="categorySelected(null, true)" prepend-icon="mdi-star">
-                    <v-list-item-title>STARRED</v-list-item-title>
+                <v-list-item @click="categorySelected(starredCategory)" prepend-icon="mdi-star" :active="selectedCategory?.id === STARRED">
+                    <v-list-item-title>{{ starredCategory.name }}</v-list-item-title>
                 </v-list-item>
 
                 <!-- User defined categories -->
@@ -80,6 +80,7 @@ import { useRouter } from 'vue-router'
 import { computed } from 'vue'
 import KryptPadAPI from '@/krypt-pad-api'
 import { Category, Item } from '@/krypt-pad-profile'
+import { ICategoryDescriptor } from '@/interfaces'
 
 const router = useRouter()
 
@@ -89,24 +90,34 @@ const kpAPI = inject<KryptPadAPI>('kpAPI')!
 // Make sure we have a profile loaded or else redirect to the Start page
 kpAPI.redirectToStartWhenNoProfile()
 
-const isAdding = ref(false)
-const selectedCategory = ref<Category | null>(null)
-const showOnlyStarred = ref(false)
-const searchText = ref<string | null>(null)
+// Default category filters
+const ALL = 'all'
+const STARRED = 'starred'
 
-const categories = ref<Array<Category>>([])
+const isAdding = ref(false)
+const searchText = ref<string | null>(null)
+const categories = ref<Array<ICategoryDescriptor>>([])
+const allCategory: ICategoryDescriptor = { name: 'ALL', id: ALL }
+const starredCategory: ICategoryDescriptor = { name: 'STARRED', id: STARRED }
 const items = ref<Array<Item>>([])
+// Selected category. Defaults to ALL
+const selectedCategory = ref<ICategoryDescriptor>(allCategory)
 
 // Computed
 const filteredItems = computed(() => {
     const fi = items.value?.filter((item) => {
-        // Category / starred filter
-        if (selectedCategory.value && item.categoryId !== selectedCategory.value.id) {
+        // Category filter. Filter out any items that are not the selected category and if the category is not the all items category
+        if (selectedCategory.value?.id !== ALL && selectedCategory.value.id !== STARRED) {
+            if (selectedCategory.value && item.categoryId !== selectedCategory.value.id) {
+                return false
+            }
+        }
+        
+        // Filter out any items that are not starred if the starred category is selected
+        if (selectedCategory.value?.id === STARRED && !item.starred) {
             return false
         }
-        if (showOnlyStarred.value && !item.starred) {
-            return false
-        }
+
         // Text search filter
         if (searchText.value && !item.name?.toLowerCase().includes(searchText.value?.toLowerCase())) {
             return false
@@ -130,7 +141,11 @@ async function getCategories() {
         categories.value = []
         return
     }
-    categories.value = kpAPI.profile.value.categories
+
+    // Convert the profile categories
+    categories.value = kpAPI.profile.value.categories.map((c) => {
+        return { name: c.name, id: c.id } as ICategoryDescriptor
+    })
 }
 
 /**
@@ -145,6 +160,9 @@ async function addCategory(title: string) {
     kpAPI.profile.value?.categories.push(category)
     // Commit the profile
     await kpAPI.commitProfileAsync()
+
+    // Push the new category into the list
+    categories.value.push({ name: category.name, id: category.id })
 }
 
 /**
@@ -160,9 +178,8 @@ function getCategory(item: Item): Category | undefined {
  * @param category The category that was selected or null for all items
  * @param starred Whether to show starred items only
  */
-function categorySelected(category: Category | null, starred?: boolean) {
+function categorySelected(category: ICategoryDescriptor) {
     selectedCategory.value = category
-    showOnlyStarred.value = starred ?? false
 }
 
 /**
@@ -186,7 +203,7 @@ async function onDeleteCategory(category: Category) {
     await getItems()
     // Deselect if it was selected
     if (selectedCategory.value?.id === category.id) {
-        selectedCategory.value = null
+        selectedCategory.value = allCategory
     }
 }
 

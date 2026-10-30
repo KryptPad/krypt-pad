@@ -6,7 +6,7 @@
 
             <v-btn size="x-large" class="mb-5" color="primary" @click="openTipLink">Tip me on ko-fi</v-btn>
 
-            <h2>Other ways to support Krypt Pad</h2>
+            <p>Other ways to support Krypt Pad</p>
 
             <div class="d-flex" style="gap: 1rem">
                 <!-- BTC -->

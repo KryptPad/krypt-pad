@@ -23,3 +23,11 @@ export interface IAlertOptions {
     color?: string
     title?: string
 }
+
+/**
+ * Represents a category either from vault or pre-defined like All or Starred
+ */
+export interface ICategoryDescriptor {
+    name: string
+    id: string
+}

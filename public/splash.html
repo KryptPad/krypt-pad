@@ -31,7 +31,6 @@
       img {
         width: 7rem;
         height: 7rem;
-        animation: pulse 1.6s ease-in-out infinite;
       }
 
       .title {
@@ -61,18 +60,6 @@
         animation: slide 1.2s ease-in-out infinite;
       }
 
-      @keyframes pulse {
-        0%,
-        100% {
-          transform: scale(1);
-          opacity: 1;
-        }
-        50% {
-          transform: scale(0.94);
-          opacity: 0.8;
-        }
-      }
-
       @keyframes slide {
         from {
           left: -40%;
@@ -83,7 +70,6 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        img,
         .bar::after {
           animation: none;
         }
