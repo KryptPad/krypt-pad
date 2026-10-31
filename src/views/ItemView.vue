@@ -46,6 +46,30 @@
                             <name-value v-model="currentItem.fields[index]" @delete="onDeleteField"></name-value>
                         </v-card-text>
                     </v-card>
+
+                    <!-- Attachments, stored encrypted next to the vault -->
+                    <div class="mt-6">Attach files to keep them encrypted with this item.</div>
+                    <v-btn size="x-large" color="secondary" prepend-icon="mdi-paperclip" :block="true" @click="addAttachments">ATTACH FILES</v-btn>
+
+                    <v-list v-if="currentItem.attachments.length" class="mt-2">
+                        <v-list-item
+                            v-for="attachment in currentItem.attachments"
+                            :key="attachment.id"
+                            prepend-icon="mdi-file-lock"
+                            :title="attachment.name"
+                            :subtitle="formatFileSize(attachment.size)"
+                        >
+                            <template v-slot:append>
+                                <v-btn
+                                    icon="mdi-content-save"
+                                    variant="text"
+                                    title="Save a decrypted copy"
+                                    @click="kpAPI.saveAttachmentAsAsync(attachment)"
+                                ></v-btn>
+                                <v-btn icon="mdi-delete" variant="text" title="Remove" @click="onRemoveAttachment(attachment)"></v-btn>
+                            </template>
+                        </v-list-item>
+                    </v-list>
                 </div>
             </div>
 
@@ -64,7 +88,8 @@
 </template>
 
 <script setup lang="ts">
-import { Item, Field, IDecryptedCategory } from '@/krypt-pad-profile'
+import { Item, Field, Attachment, IDecryptedCategory } from '@/krypt-pad-profile'
+import { formatFileSize } from '@/utils'
 import { ref, inject, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import NameValue from '@/components/NameValue.vue'
@@ -90,12 +115,45 @@ onMounted(async () => {
     await initData()
 })
 
+// The profile is replaced when it is reloaded, e.g. with changes from another
+// device, so edits must go to the item in the new profile
+const unwatchProfile = watch(kpAPI.profile, async (profile) => {
+    if (!profile) {
+        return
+    }
+
+    await initData()
+    if (!item.value) {
+        // Deleted elsewhere
+        router.push({ name: 'home' })
+    }
+})
+
 onBeforeUnmount(() => {
+    unwatchProfile()
     if (unwatch) {
         unwatch()
         unwatch = null
     }
 })
+
+async function addAttachments() {
+    if (currentItem.value) {
+        await kpAPI.addAttachmentsAsync(currentItem.value)
+    }
+}
+
+async function onRemoveAttachment(attachment: Attachment) {
+    if (!currentItem.value) {
+        return
+    }
+
+    if (!(await confirmDeletePrompt.value?.confirm(`Are you sure you want to remove ${attachment.name}?`))) {
+        return
+    }
+
+    await kpAPI.removeAttachmentAsync(currentItem.value, attachment)
+}
 
 function addField() {
     if (!fieldName.value) {
@@ -121,9 +179,7 @@ async function deleteItem() {
         return
     }
 
-    const index = kpAPI.profile.value.items.findIndex((i: Item) => i.id === currentItem.value?.id)
-    if (index > -1) {
-        kpAPI.profile.value.items.splice(index, 1)
+    if (kpAPI.profile.value.deleteItem(currentItem.value)) {
         await kpAPI.commitProfileAsync()
         router.back()
     }
@@ -155,15 +211,19 @@ async function initData() {
 
     item.value = kpAPI.profile.value?.items.find((i: Item) => i.id === props.id)
     if (!item.value) {
+        currentItem.value = undefined
         return
+    }
+
+    // Stop watching first, so switching to the reloaded item isn't taken for an edit
+    if (unwatch) {
+        unwatch()
+        unwatch = null
     }
 
     currentItem.value = item.value
 
     // Create a single watcher, tracked so it can be cleaned up
-    if (unwatch) {
-        unwatch()
-    }
     unwatch = watch(
         currentItem,
         (newItem) => {

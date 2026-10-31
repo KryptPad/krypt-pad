@@ -5,6 +5,12 @@ const { ipcBridgeMock } = vi.hoisted(() => ({
     ipcBridgeMock: {
         openProfile: vi.fn(),
         saveProfile: vi.fn(),
+        reloadProfile: vi.fn(),
+        saveConflictCopy: vi.fn(),
+        addAttachments: vi.fn(),
+        saveAttachmentAs: vi.fn(),
+        copyAttachments: vi.fn(),
+        compactAttachments: vi.fn(),
         setSessionPassphrase: vi.fn(),
         lockProfile: vi.fn(),
         saveConfigFile: vi.fn(),
@@ -32,8 +38,22 @@ vi.mock('@/components/AlertDialog.vue', () => ({ default: { name: 'AlertDialog' 
 
 import KryptPadAPI from '@/krypt-pad-api'
 import { SettingsManager } from '@/app-settings'
-import { Profile, Category, Item } from '@/krypt-pad-profile'
+import { Profile, Category, Item, Attachment } from '@/krypt-pad-profile'
 import { KryptPadError, KryptPadErrorCodes } from '../common/error-utils'
+
+const ATTACHMENT_ID = '11111111-2222-4333-8444-555555555555'
+
+const vaultChangedError = () => new KryptPadError('The vault was changed by someone else.', KryptPadErrorCodes.VAULT_CHANGED)
+
+/**
+ * Lets queued promise callbacks, such as a conflict being resolved outside
+ * the save chain, run to completion.
+ */
+const settle = async () => {
+    for (let i = 0; i < 10; i++) {
+        await Promise.resolve()
+    }
+}
 
 describe('KryptPadAPI', () => {
     let api: KryptPadAPI
@@ -87,11 +107,26 @@ describe('KryptPadAPI', () => {
             profile.categories.push(category)
             api.profile.value = profile
 
-            const plainText = await profile.toJSON()
             await api.commitProfileAsync()
 
-            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledWith('vault.kpf', plainText)
+            // The category is new, so it is stamped as modified before saving
+            expect(category.modified).toBeDefined()
+            const plainText = await profile.toJSON()
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledWith('vault.kpf', plainText, { hasAttachments: false })
             expect(api.saving.value).toBe(false)
+        })
+
+        it('marks the file as having attachments when an item has one', async () => {
+            api.fileName.value = 'vault.kpf'
+            const profile = new Profile()
+            const item = new Item('item-1')
+            item.attachments.push(new Attachment(ATTACHMENT_ID, 'a.txt', 1, 'key'))
+            profile.items.push(item)
+            api.profile.value = profile
+
+            await api.commitProfileAsync()
+
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledWith('vault.kpf', expect.any(String), { hasAttachments: true })
         })
 
         it('does nothing when there is no file name', async () => {
@@ -383,6 +418,226 @@ describe('KryptPadAPI', () => {
             expect(api.fileName.value).toBe('old.kpf')
             expect(ipcBridgeMock.setSessionPassphrase).not.toHaveBeenCalled()
             expect(ipcBridgeMock.saveProfile).not.toHaveBeenCalled()
+        })
+
+        it('copies attachments to the new vault', async () => {
+            api.fileName.value = 'old.kpf'
+            const profile = new Profile()
+            const item = new Item('item-1')
+            item.attachments.push(new Attachment(ATTACHMENT_ID, 'a.txt', 1, 'key'))
+            profile.items.push(item)
+            api.profile.value = profile
+            api.onRequirePassphrase(vi.fn().mockResolvedValue('pass'))
+            ipcBridgeMock.copyAttachments.mockResolvedValueOnce([])
+            ipcBridgeMock.showSaveFileDialogAsync.mockResolvedValueOnce({ canceled: false, filePath: '/data/new.kpf' })
+
+            await api.saveProfileAsAsync()
+
+            expect(ipcBridgeMock.copyAttachments).toHaveBeenCalledWith('old.kpf', '/data/new.kpf', [ATTACHMENT_ID])
+        })
+    })
+
+    describe('unchanged profiles', () => {
+        it('does not write a just-opened profile back when nothing changed', async () => {
+            const json = JSON.stringify({ categories: [{ id: 'cat-1', name: 'General' }], items: [] })
+            api.onRequirePassphrase(vi.fn().mockResolvedValue('secret'))
+            ipcBridgeMock.showOpenFileDialogAsync.mockResolvedValueOnce({ canceled: false, filePaths: ['/data/vault.kpf'] })
+            ipcBridgeMock.openProfile.mockResolvedValueOnce(json)
+            await api.openExistingFileAsync()
+
+            await api.commitProfileAsync()
+            expect(ipcBridgeMock.saveProfile).not.toHaveBeenCalled()
+
+            api.profile.value!.categories[0].name = 'Renamed'
+            await api.commitProfileAsync()
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledTimes(1)
+            expect(api.profile.value!.categories[0].modified).toBeDefined()
+        })
+    })
+
+    describe('conflicts', () => {
+        let resolveConflict: ReturnType<typeof vi.fn>
+
+        beforeEach(() => {
+            resolveConflict = vi.fn().mockResolvedValue(null)
+            api.conflictDialog = { resolve: resolveConflict, dismiss: vi.fn() } as any
+            api.alertDialog = { error: vi.fn() } as any
+            api.fileName.value = 'vault.kpf'
+            api.profile.value = new Profile()
+        })
+
+        it('pauses autosave and asks the user when the vault was changed elsewhere', async () => {
+            ipcBridgeMock.saveProfile.mockRejectedValueOnce(vaultChangedError())
+
+            await api.commitProfileAsync()
+            await settle()
+
+            expect(api.conflictPending.value).toBe(true)
+            expect(resolveConflict).toHaveBeenCalledTimes(1)
+            // A conflict is not reported as an ordinary save error
+            expect(api.alertDialog!.error).not.toHaveBeenCalled()
+
+            // Further saves are held back until the user decides
+            await api.commitProfileAsync()
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledTimes(1)
+        })
+
+        it('treats a missing vault file as a conflict', async () => {
+            ipcBridgeMock.saveProfile.mockRejectedValueOnce(new KryptPadError('gone', KryptPadErrorCodes.VAULT_MISSING))
+
+            await api.commitProfileAsync()
+            await settle()
+
+            expect(api.conflictPending.value).toBe(true)
+        })
+
+        it('overwrites the vault when the user keeps their changes', async () => {
+            resolveConflict.mockResolvedValueOnce('keep-mine')
+            ipcBridgeMock.saveProfile.mockRejectedValueOnce(vaultChangedError())
+
+            await api.commitProfileAsync()
+            await settle()
+            await api.flushPendingCommit()
+
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledTimes(2)
+            expect(ipcBridgeMock.saveProfile.mock.calls[1][2]).toEqual({ hasAttachments: false, force: true })
+            expect(api.conflictPending.value).toBe(false)
+        })
+
+        it('replaces the profile with the vault on disk when the user reloads', async () => {
+            resolveConflict.mockResolvedValueOnce('reload')
+            ipcBridgeMock.saveProfile.mockRejectedValueOnce(vaultChangedError())
+            ipcBridgeMock.reloadProfile.mockResolvedValueOnce(JSON.stringify({ categories: [{ id: 'c', name: 'From desktop' }], items: [] }))
+
+            await api.commitProfileAsync()
+            await settle()
+
+            expect(ipcBridgeMock.reloadProfile).toHaveBeenCalledWith('vault.kpf')
+            expect(api.profile.value!.categories[0].name).toBe('From desktop')
+            expect(api.conflictPending.value).toBe(false)
+
+            // The reloaded profile is not written straight back
+            await api.flushPendingCommit()
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledTimes(1)
+        })
+
+        it('asks for the passphrase when the vault was re-keyed elsewhere', async () => {
+            api.onRequirePassphrase(vi.fn().mockResolvedValue('new passphrase'))
+            ipcBridgeMock.reloadProfile.mockRejectedValueOnce(new KryptPadError('wrong', KryptPadErrorCodes.DECRYPT_ERROR))
+            ipcBridgeMock.openProfile.mockResolvedValueOnce(JSON.stringify({ categories: [], items: [] }))
+
+            await expect(api.reloadFromVaultAsync()).resolves.toBe(true)
+
+            expect(ipcBridgeMock.openProfile).toHaveBeenCalledWith('vault.kpf', 'new passphrase')
+        })
+
+        it('saves to a new vault with the same passphrase when the user picks Save As', async () => {
+            resolveConflict.mockResolvedValueOnce('save-as')
+            const requirePassphrase = vi.fn()
+            api.onRequirePassphrase(requirePassphrase)
+            ipcBridgeMock.saveProfile.mockRejectedValueOnce(vaultChangedError())
+            ipcBridgeMock.showSaveFileDialogAsync.mockResolvedValueOnce({ canceled: false, filePath: '/data/mine.kpf' })
+
+            await api.commitProfileAsync()
+            await settle()
+            await api.flushPendingCommit()
+
+            expect(requirePassphrase).not.toHaveBeenCalled()
+            expect(ipcBridgeMock.setSessionPassphrase).not.toHaveBeenCalled()
+            expect(api.fileName.value).toBe('/data/mine.kpf')
+            expect(ipcBridgeMock.saveProfile).toHaveBeenLastCalledWith('/data/mine.kpf', expect.any(String), { hasAttachments: false })
+            expect(api.conflictPending.value).toBe(false)
+        })
+
+        it('writes unsaved edits to a conflicted copy when closing during a conflict', async () => {
+            api.notifier = { notify: vi.fn() }
+            ipcBridgeMock.saveProfile.mockRejectedValueOnce(vaultChangedError())
+            ipcBridgeMock.saveConflictCopy.mockResolvedValueOnce('/data/vault (conflicted copy).kpf')
+
+            await api.commitProfileAsync()
+            await settle()
+            await api.closeFile()
+
+            expect(ipcBridgeMock.saveConflictCopy).toHaveBeenCalledWith('vault.kpf', expect.any(String), [])
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledTimes(1)
+            expect(api.notifier.notify).toHaveBeenCalled()
+            expect(api.conflictDialog!.dismiss).toHaveBeenCalled()
+        })
+    })
+
+    describe('handleVaultChangedExternallyAsync', () => {
+        beforeEach(() => {
+            api.fileName.value = 'vault.kpf'
+            api.profile.value = new Profile()
+            api.notifier = { notify: vi.fn() }
+        })
+
+        it('reloads quietly when there are no unsaved edits', async () => {
+            ipcBridgeMock.reloadProfile.mockResolvedValueOnce(JSON.stringify({ categories: [{ id: 'c', name: 'New' }], items: [] }))
+
+            await api.handleVaultChangedExternallyAsync()
+
+            expect(api.profile.value!.categories[0].name).toBe('New')
+            expect(api.notifier!.notify).toHaveBeenCalled()
+            expect(api.conflictPending.value).toBe(false)
+        })
+
+        it('asks the user instead when there are unsaved edits', async () => {
+            vi.useFakeTimers()
+            const resolveConflict = vi.fn().mockResolvedValue(null)
+            api.conflictDialog = { resolve: resolveConflict, dismiss: vi.fn() } as any
+
+            api.scheduleCommit()
+            await api.handleVaultChangedExternallyAsync()
+
+            expect(ipcBridgeMock.reloadProfile).not.toHaveBeenCalled()
+            expect(api.conflictPending.value).toBe(true)
+            expect(resolveConflict).toHaveBeenCalled()
+        })
+    })
+
+    describe('attachments', () => {
+        beforeEach(() => {
+            api.fileName.value = 'vault.kpf'
+            api.profile.value = new Profile()
+            api.alertDialog = { error: vi.fn() } as any
+        })
+
+        it('adds the attachments the main process encrypted and saves', async () => {
+            const item = new Item('item-1')
+            api.profile.value!.items.push(item)
+            ipcBridgeMock.addAttachments.mockResolvedValueOnce({
+                attachments: [{ id: ATTACHMENT_ID, name: 'a.txt', size: 5, key: 'a2V5', added: '2026-01-01T00:00:00.000Z' }],
+                errors: []
+            })
+
+            await api.addAttachmentsAsync(item)
+
+            expect(item.attachments).toHaveLength(1)
+            expect(item.attachments[0].name).toBe('a.txt')
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalledWith('vault.kpf', expect.any(String), { hasAttachments: true })
+        })
+
+        it('reports files that could not be attached', async () => {
+            const item = new Item('item-1')
+            ipcBridgeMock.addAttachments.mockResolvedValueOnce({ attachments: [], errors: ['big.iso: The file is too large to attach.'] })
+
+            await api.addAttachmentsAsync(item)
+
+            expect(api.alertDialog!.error).toHaveBeenCalled()
+            expect(ipcBridgeMock.saveProfile).not.toHaveBeenCalled()
+        })
+
+        it('removes an attachment reference and saves', async () => {
+            const item = new Item('item-1')
+            const attachment = new Attachment(ATTACHMENT_ID, 'a.txt', 1, 'key')
+            item.attachments.push(attachment)
+            api.profile.value!.items.push(item)
+
+            await api.removeAttachmentAsync(item, attachment)
+
+            expect(item.attachments).toHaveLength(0)
+            expect(ipcBridgeMock.saveProfile).toHaveBeenCalled()
         })
     })
 })

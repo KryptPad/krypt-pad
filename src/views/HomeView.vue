@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject, onActivated, ref } from 'vue'
+import { inject, onActivated, ref, watch } from 'vue'
 import ValueTextField from '@/components/ValueTextField.vue'
 import CategoryListItem from '@/components/CategoryListItem.vue'
 import { useRouter } from 'vue-router'
@@ -133,6 +133,12 @@ onActivated(async () => {
     await getItems()
 })
 
+// The profile is replaced when it is reloaded, e.g. with changes from another device
+watch(kpAPI.profile, async () => {
+    await getCategories()
+    await getItems()
+})
+
 /**
  * Gets categories from the unlocked profile
  */
@@ -168,7 +174,7 @@ async function addCategory(title: string) {
 /**
  * Gets the category for an item
  */
-function getCategory(item: Item): Category | undefined {
+function getCategory(item: Item): ICategoryDescriptor | undefined {
     const category = categories.value.find((c) => c.id === item.categoryId)
     return category
 }
@@ -185,7 +191,7 @@ function categorySelected(category: ICategoryDescriptor) {
 /**
  * Updates a category's title
  */
-async function categoryUpdated(category: Category, title: string) {
+async function categoryUpdated(category: ICategoryDescriptor, title: string) {
     const c = kpAPI.profile.value?.categories.find((c) => c.id === category.id)
     category.name = title
     if (c) {
@@ -197,7 +203,7 @@ async function categoryUpdated(category: Category, title: string) {
 /**
  * Deletes a category
  */
-async function onDeleteCategory(category: Category) {
+async function onDeleteCategory(category: ICategoryDescriptor) {
     await kpAPI.deleteCategory(kpAPI.profile.value?.categories.find((c) => c.id === category.id) as Category)
     await getCategories()
     await getItems()

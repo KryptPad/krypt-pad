@@ -78,3 +78,20 @@ export function hexToRgba(hex: string, alpha: number) {
     const b = parseInt(hex.slice(5, 7), 16)
     return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
+
+/**
+ * Formats a byte count for display, e.g. 1536 becomes "1.5 KB".
+ * @param bytes The size in bytes
+ * @returns
+ */
+export function formatFileSize(bytes: number): string {
+    const units = ['bytes', 'KB', 'MB', 'GB']
+    let size = bytes
+    let unit = 0
+    while (size >= 1024 && unit < units.length - 1) {
+        size /= 1024
+        unit++
+    }
+
+    return unit === 0 ? `${size} ${units[0]}` : `${size.toFixed(1)} ${units[unit]}`
+}

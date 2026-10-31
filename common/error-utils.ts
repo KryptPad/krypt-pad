@@ -7,7 +7,15 @@ enum KryptPadErrorCodes {
     /** The passphrase is wrong or the encrypted content was altered */
     DECRYPT_ERROR,
     /** The file is not a Krypt Pad file, is corrupted, or uses an unsupported format */
-    INVALID_FILE
+    INVALID_FILE,
+    /** The vault was changed on disk (e.g. by another device) since this session last read or wrote it */
+    VAULT_CHANGED,
+    /** The vault file no longer exists where this session last read or wrote it */
+    VAULT_MISSING,
+    /** An attachment's encrypted file is not on this device, e.g. it has not finished syncing */
+    ATTACHMENT_MISSING,
+    /** A file is too large to add as an attachment */
+    ATTACHMENT_TOO_LARGE
 
 }
 

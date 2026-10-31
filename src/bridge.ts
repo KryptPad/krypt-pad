@@ -1,6 +1,7 @@
 import { KryptPadError } from '../common/error-utils'
 import { IPCData } from '../electron/ipc'
 import { SettingsManager } from './app-settings'
+import { IAddAttachmentsResult, ISaveProfileOptions } from './interfaces'
 
 /**
  * New experimental bridge using ipcRenderer directly
@@ -27,17 +28,101 @@ class IPCBridge {
     }
 
     /**
-     * Encrypts and saves the profile to a file
+     * Encrypts and saves the profile to a file. Unless force is set, the save
+     * is refused with VAULT_CHANGED or VAULT_MISSING when the file on disk is
+     * no longer the version this session last read or wrote.
      * @param {string} fileName
      * @param {*} plainText
+     * @param options force overwrites changes made elsewhere; hasAttachments marks the file so older app versions refuse it
      * @returns
      */
-    async saveProfile(fileName: string, profileData: string): Promise<void> {
-        const response = <IPCData<string>>await this.desktopApi.saveProfile(fileName, profileData)
+    async saveProfile(fileName: string, profileData: string, options?: ISaveProfileOptions): Promise<void> {
+        const response = <IPCData<string>>await this.desktopApi.saveProfile(fileName, profileData, options)
         if (response.error) {
             // Throw the error
             throw KryptPadError.fromError(response.error)
         }
+    }
+
+    /**
+     * Writes the profile to a new conflicted copy next to the vault.
+     * @returns The path of the copy
+     */
+    async saveConflictCopy(fileName: string, profileData: string, attachmentIds: string[]): Promise<string> {
+        const response = <IPCData<string>>await this.desktopApi.saveConflictCopy(fileName, profileData, attachmentIds)
+        if (response.error || !response.data) {
+            throw KryptPadError.fromError(response.error)
+        }
+
+        return response.data
+    }
+
+    /**
+     * Re-reads the profile with the session key, without asking for the
+     * passphrase. Throws DECRYPT_ERROR when the file was re-keyed elsewhere.
+     * @param fileName The vault to read
+     * @returns A string containing the decrypted data
+     */
+    async reloadProfile(fileName: string): Promise<string | undefined> {
+        const response = <IPCData<string>>await this.desktopApi.reloadProfile(fileName)
+        if (response.error) {
+            throw KryptPadError.fromError(response.error)
+        }
+
+        return response.data
+    }
+
+    /**
+     * Lets the user pick files and encrypts them into the vault's attachment folder.
+     * @param vaultFileName The vault the files are added to
+     * @returns The new attachments and any per-file errors, or undefined if canceled
+     */
+    async addAttachments(vaultFileName: string): Promise<IAddAttachmentsResult | undefined> {
+        const response = <IPCData<IAddAttachmentsResult>>await this.desktopApi.addAttachments(vaultFileName)
+        if (response.error) {
+            throw KryptPadError.fromError(response.error)
+        }
+
+        return response.data
+    }
+
+    /**
+     * Decrypts an attachment to a location the user picks.
+     * @returns Whether the file was saved (false if the user canceled)
+     */
+    async saveAttachmentAs(vaultFileName: string, attachment: { id: string; name: string; key: string }): Promise<boolean> {
+        const response = <IPCData<boolean>>await this.desktopApi.saveAttachmentAs(vaultFileName, attachment)
+        if (response.error) {
+            throw KryptPadError.fromError(response.error)
+        }
+
+        return response.data === true
+    }
+
+    /**
+     * Copies encrypted attachments from one vault's folder to another's.
+     * @returns The ids whose files were not found on this device
+     */
+    async copyAttachments(fromVaultFileName: string, toVaultFileName: string, attachmentIds: string[]): Promise<string[]> {
+        const response = <IPCData<string[]>>await this.desktopApi.copyAttachments(fromVaultFileName, toVaultFileName, attachmentIds)
+        if (response.error) {
+            throw KryptPadError.fromError(response.error)
+        }
+
+        return response.data ?? []
+    }
+
+    /**
+     * Removes old attachment files the profile no longer references.
+     * @returns The number of files removed
+     */
+    async compactAttachments(vaultFileName: string, referencedIds: string[]): Promise<number> {
+        const response = <IPCData<number>>await this.desktopApi.compactAttachments(vaultFileName, referencedIds)
+        if (response.error) {
+            throw KryptPadError.fromError(response.error)
+        }
+
+        return response.data ?? 0
     }
 
     async setSessionPassphrase(passphrase: string): Promise<void> {

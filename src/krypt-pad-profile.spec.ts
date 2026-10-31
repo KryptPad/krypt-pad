@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Profile, Category, Item, Field } from '@/krypt-pad-profile'
+import { Profile, Category, Item, Field, Attachment } from '@/krypt-pad-profile'
 
 describe('Profile', () => {
     describe('from', () => {
@@ -142,5 +142,98 @@ describe('Field', () => {
         const field = new Field('email', 'user@example.com')
         expect(field.name).toBe('email')
         expect(field.value).toBe('user@example.com')
+    })
+})
+
+describe('Profile attachments and change tracking', () => {
+    const ATTACHMENT_ID = '11111111-2222-4333-8444-555555555555'
+
+    it('round-trips attachments', async () => {
+        const profile = new Profile()
+        const item = new Item('item-1')
+        item.attachments.push(new Attachment(ATTACHMENT_ID, 'scan.pdf', 2048, 'a2V5', '2026-01-01T00:00:00.000Z'))
+        profile.items.push(item)
+
+        const reloaded = await Profile.from(await profile.toJSON())
+
+        expect(reloaded.items[0].attachments).toEqual([new Attachment(ATTACHMENT_ID, 'scan.pdf', 2048, 'a2V5', '2026-01-01T00:00:00.000Z')])
+        expect(reloaded.hasAttachments()).toBe(true)
+        expect(reloaded.getAttachmentIds()).toEqual([ATTACHMENT_ID])
+    })
+
+    it('leaves attachments and deletions out of the JSON when there are none', async () => {
+        const profile = new Profile()
+        profile.items.push(new Item('item-1'))
+
+        const json = JSON.parse(await profile.toJSON())
+
+        expect(json.items[0].attachments).toBeUndefined()
+        expect(json.deletedItems).toBeUndefined()
+        expect(json.deletedCategories).toBeUndefined()
+        expect(profile.hasAttachments()).toBe(false)
+    })
+
+    it('loads profiles written before modified times and deletions existed', async () => {
+        const profile = await Profile.from(JSON.stringify({ categories: [{ id: 'c', name: 'Old' }], items: [{ id: 'i', name: 'Old', fields: [] }] }))
+
+        expect(profile.categories[0].modified).toBeUndefined()
+        expect(profile.items[0].modified).toBeUndefined()
+        expect(profile.items[0].attachments).toEqual([])
+        expect(profile.deletedItems).toEqual([])
+        expect(profile.deletedCategories).toEqual([])
+    })
+
+    it('records deletions and round-trips them', async () => {
+        const profile = new Profile()
+        const category = new Category('cat-1')
+        const item = new Item('item-1')
+        item.categoryId = 'cat-1'
+        const other = new Item('item-2')
+        other.categoryId = 'cat-1'
+        profile.categories.push(category)
+        profile.items.push(item, other)
+
+        expect(profile.deleteItem(item)).toBe(true)
+        expect(profile.deleteCategory(category)).toBe(true)
+        expect(profile.deleteItem(item)).toBe(false)
+
+        expect(profile.items).toEqual([other])
+        expect(other.categoryId).toBeUndefined()
+
+        const reloaded = await Profile.from(await profile.toJSON())
+        expect(reloaded.deletedItems.map((d) => d.id)).toEqual(['item-1'])
+        expect(reloaded.deletedCategories.map((d) => d.id)).toEqual(['cat-1'])
+    })
+
+    it('preserves properties written by a newer version', async () => {
+        const json = JSON.stringify({
+            futureSetting: { theme: 'dark' },
+            categories: [{ id: 'c', name: 'C', color: 'red' }],
+            items: [{ id: 'i', name: 'I', fields: [], tags: ['a'] }]
+        })
+
+        const resaved = JSON.parse(await (await Profile.from(json)).toJSON())
+
+        expect(resaved.futureSetting).toEqual({ theme: 'dark' })
+        expect(resaved.categories[0].color).toBe('red')
+        expect(resaved.items[0].tags).toEqual(['a'])
+    })
+
+    it('stamps only new or changed entities as modified', () => {
+        const profile = new Profile()
+        const unchanged = new Item('item-1')
+        const changed = new Item('item-2')
+        profile.items.push(unchanged, changed)
+
+        const snapshot = profile.snapshot()
+        changed.notes = 'edited'
+        const added = new Item('item-3')
+        profile.items.push(added)
+
+        profile.stampModified(snapshot, '2026-02-02T00:00:00.000Z')
+
+        expect(unchanged.modified).toBeUndefined()
+        expect(changed.modified).toBe('2026-02-02T00:00:00.000Z')
+        expect(added.modified).toBe('2026-02-02T00:00:00.000Z')
     })
 })

@@ -21,11 +21,17 @@ declare namespace NodeJS {
     }
 }
 
-type KryptPadEventChannel = 'handle-shortcut' | 'unmaximize' | 'maximize' | 'blur' | 'focus' | 'flush-before-close'
+type KryptPadEventChannel = 'handle-shortcut' | 'unmaximize' | 'maximize' | 'blur' | 'focus' | 'flush-before-close' | 'vault-changed-externally'
 
 interface KryptPadDesktopApi {
     openProfile(fileName: string, passphrase: string): Promise<any>
-    saveProfile(fileName: string, profileData: string): Promise<any>
+    saveProfile(fileName: string, profileData: string, options?: { force?: boolean; hasAttachments?: boolean }): Promise<any>
+    saveConflictCopy(fileName: string, profileData: string, attachmentIds: string[]): Promise<any>
+    reloadProfile(fileName: string): Promise<any>
+    addAttachments(vaultFileName: string): Promise<any>
+    saveAttachmentAs(vaultFileName: string, attachment: { id: string; name: string; key: string }): Promise<any>
+    copyAttachments(fromVaultFileName: string, toVaultFileName: string, attachmentIds: string[]): Promise<any>
+    compactAttachments(vaultFileName: string, referencedIds: string[]): Promise<any>
     setSessionPassphrase(passphrase: string): Promise<any>
     lockProfile(): Promise<any>
     flushComplete(): Promise<any>

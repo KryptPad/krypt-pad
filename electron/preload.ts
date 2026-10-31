@@ -1,16 +1,42 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-type AppEventChannel = 'handle-shortcut' | 'unmaximize' | 'maximize' | 'blur' | 'focus' | 'flush-before-close'
+type AppEventChannel = 'handle-shortcut' | 'unmaximize' | 'maximize' | 'blur' | 'focus' | 'flush-before-close' | 'vault-changed-externally'
 
-const validEventChannels = new Set<AppEventChannel>(['handle-shortcut', 'unmaximize', 'maximize', 'blur', 'focus', 'flush-before-close'])
+const validEventChannels = new Set<AppEventChannel>([
+    'handle-shortcut',
+    'unmaximize',
+    'maximize',
+    'blur',
+    'focus',
+    'flush-before-close',
+    'vault-changed-externally'
+])
 
 // Expose a narrow renderer API.
 const api = {
     openProfile(fileName: string, passphrase: string): Promise<any> {
         return ipcRenderer.invoke('open-profile', fileName, passphrase)
     },
-    saveProfile(fileName: string, profileData: string): Promise<any> {
-        return ipcRenderer.invoke('save-profile', fileName, profileData)
+    saveProfile(fileName: string, profileData: string, options?: { force?: boolean; hasAttachments?: boolean }): Promise<any> {
+        return ipcRenderer.invoke('save-profile', fileName, profileData, options)
+    },
+    saveConflictCopy(fileName: string, profileData: string, attachmentIds: string[]): Promise<any> {
+        return ipcRenderer.invoke('save-conflict-copy', fileName, profileData, attachmentIds)
+    },
+    reloadProfile(fileName: string): Promise<any> {
+        return ipcRenderer.invoke('reload-profile', fileName)
+    },
+    addAttachments(vaultFileName: string): Promise<any> {
+        return ipcRenderer.invoke('add-attachments', vaultFileName)
+    },
+    saveAttachmentAs(vaultFileName: string, attachment: { id: string; name: string; key: string }): Promise<any> {
+        return ipcRenderer.invoke('save-attachment-as', vaultFileName, attachment)
+    },
+    copyAttachments(fromVaultFileName: string, toVaultFileName: string, attachmentIds: string[]): Promise<any> {
+        return ipcRenderer.invoke('copy-attachments', fromVaultFileName, toVaultFileName, attachmentIds)
+    },
+    compactAttachments(vaultFileName: string, referencedIds: string[]): Promise<any> {
+        return ipcRenderer.invoke('compact-attachments', vaultFileName, referencedIds)
     },
     setSessionPassphrase(passphrase: string): Promise<any> {
         return ipcRenderer.invoke('set-session-passphrase', passphrase)

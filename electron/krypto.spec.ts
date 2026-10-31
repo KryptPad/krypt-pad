@@ -1,6 +1,19 @@
 import crypto from 'crypto'
-import { describe, it, expect } from 'vitest'
-import { deriveFileKeyAsync, destroyFileKey, encryptFilePayload, decryptFilePayloadAsync } from './krypto'
+import os from 'os'
+import path from 'path'
+import { mkdtemp, rm, writeFile, readFile, stat, open } from 'fs/promises'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import {
+    deriveFileKeyAsync,
+    destroyFileKey,
+    encryptFilePayload,
+    decryptFilePayloadAsync,
+    decryptFilePayloadWithKey,
+    createAttachmentKey,
+    encryptAttachmentFileAsync,
+    decryptAttachmentFileAsync,
+    MAX_ATTACHMENT_SIZE
+} from './krypto'
 import { KryptPadError, KryptPadErrorCodes } from '../common/error-utils'
 
 /**
@@ -333,5 +346,165 @@ describe('passphrase Unicode normalization', () => {
     it('fails cleanly when neither form matches', async () => {
         const encrypted = await encryptFilePayloadAsync('vault', COMPOSED)
         await expectDecryptFailure(decryptFilePayloadAsync(encrypted, 'cafe\u0301 wrong'), WRONG_PASSPHRASE_MESSAGE)
+    })
+})
+
+describe('file versions', () => {
+    it('writes version 1 normally and version 2 when the profile has attachments, and reads both', async () => {
+        const fileKey = await deriveFileKeyAsync(PASSPHRASE)
+
+        const plain = encryptFilePayload('vault', fileKey)
+        const withAttachments = encryptFilePayload('vault', fileKey, true)
+
+        expect(plain.readUInt8(OFFSET_VERSION)).toBe(1)
+        expect(withAttachments.readUInt8(OFFSET_VERSION)).toBe(2)
+        expect(await decryptText(plain, PASSPHRASE)).toBe('vault')
+        expect(await decryptText(withAttachments, PASSPHRASE)).toBe('vault')
+    })
+})
+
+describe('decryptFilePayloadWithKey', () => {
+    it('decrypts a file saved with the same key', async () => {
+        const fileKey = await deriveFileKeyAsync(PASSPHRASE)
+        const encrypted = encryptFilePayload('from another device', fileKey)
+
+        expect(decryptFilePayloadWithKey(encrypted, fileKey)).toBe('from another device')
+    })
+
+    it('fails with DECRYPT_ERROR when the file was re-keyed', async () => {
+        const sessionKey = await deriveFileKeyAsync(PASSPHRASE)
+        const rekeyed = encryptFilePayload('vault', await deriveFileKeyAsync(PASSPHRASE))
+
+        expect(() => decryptFilePayloadWithKey(rekeyed, sessionKey)).toThrow(expect.objectContaining({ code: KryptPadErrorCodes.DECRYPT_ERROR }))
+    })
+
+    it('fails with DECRYPT_ERROR when the content was altered', async () => {
+        const fileKey = await deriveFileKeyAsync(PASSPHRASE)
+        const encrypted = encryptFilePayload('vault', fileKey)
+        encrypted[encrypted.length - 20] ^= 0xff
+
+        expect(() => decryptFilePayloadWithKey(encrypted, fileKey)).toThrow(expect.objectContaining({ code: KryptPadErrorCodes.DECRYPT_ERROR }))
+    })
+})
+
+describe('attachments', () => {
+    const ATTACHMENT_ID = '11111111-2222-4333-8444-555555555555'
+    const OTHER_ID = '99999999-2222-4333-8444-555555555555'
+    const ATTACHMENT_HEADER = 20
+    const CHUNK = 64 * 1024
+    const FULL_CHUNK = CHUNK + AUTH_TAG_LENGTH
+
+    let directory: string
+    let key: Buffer
+
+    beforeEach(async () => {
+        directory = await mkdtemp(path.join(os.tmpdir(), 'krypt-pad-attachments-'))
+        key = createAttachmentKey()
+    })
+
+    afterEach(async () => {
+        await rm(directory, { recursive: true, force: true })
+    })
+
+    const file = (name: string) => path.join(directory, name)
+
+    /**
+     * Encrypts the given bytes and returns the encrypted file's path
+     */
+    const encryptBytes = async (data: Buffer, id = ATTACHMENT_ID): Promise<string> => {
+        await writeFile(file('plain'), data)
+        const size = await encryptAttachmentFileAsync(file('plain'), file('enc.kpb'), id, key)
+        expect(size).toBe(data.length)
+        return file('enc.kpb')
+    }
+
+    const expectInvalid = async (promise: Promise<unknown>) => {
+        await expect(promise).rejects.toMatchObject({ code: KryptPadErrorCodes.INVALID_FILE })
+        // Nothing is left at the destination
+        await expect(readFile(file('out'))).rejects.toMatchObject({ code: 'ENOENT' })
+    }
+
+    it.each([0, 1, CHUNK - 1, CHUNK, CHUNK + 1, 3 * CHUNK + 123])('round-trips %i bytes', async (length) => {
+        const data = crypto.randomBytes(length)
+        const encrypted = await encryptBytes(data)
+
+        // One final chunk always follows the full chunks
+        expect((await stat(encrypted)).size).toBe(ATTACHMENT_HEADER + Math.floor(length / CHUNK) * FULL_CHUNK + (length % CHUNK) + AUTH_TAG_LENGTH)
+
+        await decryptAttachmentFileAsync(encrypted, file('out'), ATTACHMENT_ID, key)
+        expect((await readFile(file('out'))).equals(data)).toBe(true)
+    })
+
+    it('does not contain the plaintext', async () => {
+        const data = Buffer.from('a very secret scanned document '.repeat(100))
+        const encrypted = await readFile(await encryptBytes(data))
+
+        expect(encrypted.includes(Buffer.from('very secret'))).toBe(false)
+    })
+
+    it('fails with the wrong key', async () => {
+        const encrypted = await encryptBytes(crypto.randomBytes(100))
+        await expectInvalid(decryptAttachmentFileAsync(encrypted, file('out'), ATTACHMENT_ID, createAttachmentKey()))
+    })
+
+    it('fails when the file belongs to a different attachment', async () => {
+        const encrypted = await encryptBytes(crypto.randomBytes(100))
+        await expectInvalid(decryptAttachmentFileAsync(encrypted, file('out'), OTHER_ID, key))
+    })
+
+    it('fails when a chunk was altered', async () => {
+        const encrypted = await encryptBytes(crypto.randomBytes(2 * CHUNK + 10))
+        const data = await readFile(encrypted)
+        data[ATTACHMENT_HEADER + FULL_CHUNK + 5] ^= 0x01
+        await writeFile(encrypted, data)
+
+        await expectInvalid(decryptAttachmentFileAsync(encrypted, file('out'), ATTACHMENT_ID, key))
+    })
+
+    it('fails when chunks were reordered', async () => {
+        const encrypted = await encryptBytes(crypto.randomBytes(2 * CHUNK + 10))
+        const data = await readFile(encrypted)
+        const first = data.subarray(ATTACHMENT_HEADER, ATTACHMENT_HEADER + FULL_CHUNK)
+        const second = data.subarray(ATTACHMENT_HEADER + FULL_CHUNK, ATTACHMENT_HEADER + 2 * FULL_CHUNK)
+        await writeFile(
+            encrypted,
+            Buffer.concat([data.subarray(0, ATTACHMENT_HEADER), second, first, data.subarray(ATTACHMENT_HEADER + 2 * FULL_CHUNK)])
+        )
+
+        await expectInvalid(decryptAttachmentFileAsync(encrypted, file('out'), ATTACHMENT_ID, key))
+    })
+
+    it('fails when the final chunk was cut off', async () => {
+        const encrypted = await encryptBytes(crypto.randomBytes(2 * CHUNK + 10))
+        const data = await readFile(encrypted)
+        // Drop the final chunk, leaving only whole full chunks
+        await writeFile(encrypted, data.subarray(0, ATTACHMENT_HEADER + 2 * FULL_CHUNK))
+
+        await expectInvalid(decryptAttachmentFileAsync(encrypted, file('out'), ATTACHMENT_ID, key))
+    })
+
+    it('fails when a full chunk is cut short and passed off as the final one', async () => {
+        const encrypted = await encryptBytes(crypto.randomBytes(2 * CHUNK + 10))
+        const data = await readFile(encrypted)
+        await writeFile(encrypted, data.subarray(0, ATTACHMENT_HEADER + FULL_CHUNK + 100))
+
+        await expectInvalid(decryptAttachmentFileAsync(encrypted, file('out'), ATTACHMENT_ID, key))
+    })
+
+    it('reports an attachment that is not on this device', async () => {
+        await expect(decryptAttachmentFileAsync(file('missing.kpb'), file('out'), ATTACHMENT_ID, key)).rejects.toMatchObject({
+            code: KryptPadErrorCodes.ATTACHMENT_MISSING
+        })
+    })
+
+    it('refuses files over the size limit without writing anything', async () => {
+        const handle = await open(file('huge'), 'w')
+        await handle.truncate(MAX_ATTACHMENT_SIZE + 1)
+        await handle.close()
+
+        await expect(encryptAttachmentFileAsync(file('huge'), file('enc.kpb'), ATTACHMENT_ID, key)).rejects.toMatchObject({
+            code: KryptPadErrorCodes.ATTACHMENT_TOO_LARGE
+        })
+        await expect(stat(file('enc.kpb'))).rejects.toMatchObject({ code: 'ENOENT' })
     })
 })

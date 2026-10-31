@@ -105,6 +105,12 @@
 
         <confirm-dialog ref="confirmDialogPrompt"></confirm-dialog>
         <alert-dialog ref="alertDialogPrompt"></alert-dialog>
+        <conflict-dialog ref="conflictDialogPrompt"></conflict-dialog>
+
+        <!-- Brief notices, e.g. when the vault was updated from another device -->
+        <v-snackbar v-model="showNotice" :timeout="5000">
+            {{ noticeMessage }}
+        </v-snackbar>
 
         <!-- Timeout alert -->
         <v-snackbar v-model="timeoutAlert" multi-line :timeout="-1" color="red">
@@ -122,6 +128,7 @@ import TitleBar from '@/components/TitleBar.vue'
 import PassphrasePrompt from '@/components/PassphrasePrompt.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AlertDialog from '@/components/AlertDialog.vue'
+import ConflictDialog from '@/components/ConflictDialog.vue'
 import { computed, provide, ref, inject, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '@/constants'
@@ -138,9 +145,12 @@ const appSettings = inject<SettingsManager>('appSettings')!
 const passphrasePrompter = ref<InstanceType<typeof PassphrasePrompt>>()
 const confirmDialogPrompt = ref<InstanceType<typeof ConfirmDialog>>()
 const alertDialogPrompt = ref<InstanceType<typeof AlertDialog>>()
+const conflictDialogPrompt = ref<InstanceType<typeof ConflictDialog>>()
 
 // Data
 const passphraseIsNew = ref(false)
+const showNotice = ref(false)
+const noticeMessage = ref('')
 const secondsRemaining = ref<number | undefined>(0)
 const timeoutAlert = ref(false)
 
@@ -155,6 +165,16 @@ const kpAPI = new KryptPadAPI({
     alertDialog: {
         alert: (message: string, options?: any) => alertDialogPrompt.value?.alert(message, options) ?? Promise.resolve(false),
         error: (message: string) => alertDialogPrompt.value?.error(message) ?? Promise.resolve(false)
+    },
+    conflictDialog: {
+        resolve: (message: string) => conflictDialogPrompt.value?.resolve(message) ?? Promise.resolve(null),
+        dismiss: () => conflictDialogPrompt.value?.dismiss()
+    },
+    notifier: {
+        notify: (message: string) => {
+            noticeMessage.value = message
+            showNotice.value = true
+        }
     }
 })
 
@@ -163,10 +183,17 @@ provide('kpAPI', kpAPI)
 
 const windowInfo = computed(() => {
     let infoText = getFileName(kpAPI.fileName.value ?? '')
-    if (kpAPI.saving.value) {
+    if (kpAPI.conflictPending.value) {
+        infoText += ' - Not saved (changed on another device)'
+    } else if (kpAPI.saving.value) {
         infoText += ' - Saving'
     }
     return infoText
+})
+
+// The vault was changed on disk by something else, e.g. a sync client
+kpAPI.ipcBridge.onAppEvent('vault-changed-externally', () => {
+    void kpAPI.handleVaultChangedExternallyAsync()
 })
 
 // Register shortcut handler
@@ -208,7 +235,8 @@ const menuItems = computed(() => {
                 { divider: true },
                 { title: 'Close File', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened.value, accelerator: 'Ctrl + L' },
                 { divider: true },
-                { title: 'Save File As...', handler: kpAPI.saveProfileAsAsync, enabled: kpAPI.fileOpened.value },
+                { title: 'Save File As...', handler: () => kpAPI.saveProfileAsAsync(), enabled: kpAPI.fileOpened.value },
+                { title: 'Clean Up Attachments...', handler: kpAPI.compactAttachmentsAsync, enabled: kpAPI.fileOpened.value },
                 { divider: true },
                 {
                     title: 'Exit',

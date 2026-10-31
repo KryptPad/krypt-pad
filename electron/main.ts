@@ -18,13 +18,25 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 // Library to keep track of the electron window state between uses.
 import windowStateKeeper from 'electron-window-state'
-import { writeFile, readFile, open, rename, unlink } from 'fs/promises'
+import { writeFile, readFile, mkdir, readdir, stat, unlink } from 'fs/promises'
+import { watch, type FSWatcher } from 'node:fs'
 import crypto from 'node:crypto'
 import { SHORTCUT_NEW, SHORTCUT_OPEN, SHORTCUT_CLOSE } from '../src/constants.ts'
 import { ensureExtension } from '../src/utils.ts'
-import { decryptFilePayloadAsync, deriveFileKeyAsync, destroyFileKey, encryptFilePayload, type FileKey } from './krypto'
+import {
+    decryptFilePayloadAsync,
+    decryptFilePayloadWithKey,
+    deriveFileKeyAsync,
+    destroyFileKey,
+    encryptFilePayload,
+    createAttachmentKey,
+    encryptAttachmentFileAsync,
+    decryptAttachmentFileAsync,
+    type FileKey
+} from './krypto'
+import { writeFileAtomic, copyFileAtomic } from './fs-utils'
 import { IPCData } from './ipc.ts'
-import { KryptPadError } from '../common/error-utils'
+import { KryptPadError, KryptPadErrorCodes } from '../common/error-utils'
 
 // Set app name
 app.setName('Krypt Pad')
@@ -244,39 +256,186 @@ function closeAfterFlush() {
 }
 
 /**
- * Atomically writes data to a file by writing to a temporary file in the same
- * directory, flushing it to disk, then renaming it over the target. This
- * prevents a crash or power loss mid-write from corrupting the destination.
- *
- * The temporary file name is unique per process and per call. A shared name
- * would let a second writer truncate the temp file this one is midway through,
- * so the rename could publish a partial file over a perfectly good profile.
- * @param filePath The path of the file to write
- * @param data The data to write
+ * The vault file this session last read or wrote, and the SHA-256 of the
+ * bytes it held then. Before each save the file on disk is hashed and compared
+ * with this, so a vault changed by another device (e.g. through OneDrive or
+ * Google Drive) is never silently overwritten.
  */
-async function writeFileAtomic(filePath: string, data: Uint8Array): Promise<void> {
-    const directory = path.dirname(filePath)
-    const uniqueSuffix = `${process.pid}-${crypto.randomBytes(6).toString('hex')}`
-    const tempFilePath = path.join(directory, `.${path.basename(filePath)}.${uniqueSuffix}.tmp`)
+let vaultBaseline: { filePath: string; hash: string } | null = null
 
+/**
+ * Watches the vault's directory for changes made outside this session.
+ */
+let vaultWatcher: FSWatcher | null = null
+let vaultWatchTimer: ReturnType<typeof setTimeout> | undefined
+/**
+ * The last external version the renderer was told about, so one change isn't
+ * reported over and over while the user decides what to do.
+ */
+let lastReportedVaultHash: string | null = null
+
+/**
+ * How long to let a burst of file system events settle before checking the
+ * vault. Sync clients often write a file in several steps.
+ */
+const VAULT_WATCH_DEBOUNCE = 500
+
+/**
+ * Unused attachment files are only removed once they are at least this old.
+ * Another device's newer profile may reference an attachment this device's
+ * profile does not know about yet.
+ */
+const ATTACHMENT_COMPACT_MIN_AGE = 30 * 24 * 60 * 60 * 1000
+
+/**
+ * Hashes vault file bytes for change detection.
+ */
+function hashVault(data: Uint8Array): string {
+    return crypto.createHash('sha256').update(data).digest('hex')
+}
+
+/**
+ * Records the version of the vault this session now holds, and starts
+ * watching it when it is a different file from before.
+ * @param filePath The vault path
+ * @param hash The hash of the vault bytes this session read or wrote
+ */
+function setVaultBaseline(filePath: string, hash: string) {
+    const resolved = path.resolve(filePath)
+    if (vaultBaseline?.filePath !== resolved) {
+        watchVault(resolved)
+    }
+
+    vaultBaseline = { filePath: resolved, hash }
+    lastReportedVaultHash = null
+}
+
+/**
+ * Forgets the vault baseline and stops watching, e.g. when the vault is locked.
+ */
+function clearVaultBaseline() {
+    vaultBaseline = null
+    lastReportedVaultHash = null
+    stopWatchingVault()
+}
+
+function stopWatchingVault() {
+    clearTimeout(vaultWatchTimer)
+    vaultWatcher?.close()
+    vaultWatcher = null
+}
+
+/**
+ * Watches a vault for changes made by something other than this session. The
+ * directory is watched rather than the file, because an atomic save renames a
+ * new file over the old one and a watch on the file itself would be lost.
+ * @param filePath The resolved vault path
+ */
+function watchVault(filePath: string) {
+    stopWatchingVault()
+
+    const fileName = path.basename(filePath)
     try {
-        // Write to a temporary file in the same directory as the target
-        const fileHandle = await open(tempFilePath, 'w')
-        try {
-            await fileHandle.writeFile(data)
-            // Ensure the data is durably written to disk before replacing the target
-            await fileHandle.sync()
-        } finally {
-            await fileHandle.close()
-        }
+        vaultWatcher = watch(path.dirname(filePath), (_, changedName) => {
+            // Some platforms don't report the name, so check anyway then
+            if (changedName && changedName.toString() !== fileName) {
+                return
+            }
 
-        // Atomically replace the destination with the fully-written temp file
-        await rename(tempFilePath, filePath)
+            clearTimeout(vaultWatchTimer)
+            vaultWatchTimer = setTimeout(() => void checkVaultForExternalChange(filePath), VAULT_WATCH_DEBOUNCE)
+        })
+        vaultWatcher.on('error', (ex) => {
+            console.error('Stopped watching the vault for changes.', ex)
+            stopWatchingVault()
+        })
     } catch (ex) {
-        // Clean up the temporary file if it was created
-        await unlink(tempFilePath).catch(() => {})
+        // Watching is a convenience; saves are still checked for conflicts
+        console.error('Could not watch the vault for changes.', ex)
+    }
+}
+
+/**
+ * Tells the renderer when the vault on disk no longer matches what this
+ * session last read or wrote.
+ * @param filePath The resolved vault path being watched
+ */
+async function checkVaultForExternalChange(filePath: string) {
+    let hash: string
+    try {
+        hash = hashVault(await readFile(filePath))
+    } catch {
+        // Missing or mid-replace; a later event or the next save will catch it
+        return
+    }
+
+    if (!vaultBaseline || vaultBaseline.filePath !== filePath || hash === vaultBaseline.hash || hash === lastReportedVaultHash) {
+        return
+    }
+
+    lastReportedVaultHash = hash
+    win?.webContents.send('vault-changed-externally')
+}
+
+/**
+ * Throws if the vault on disk was changed since this session last read or
+ * wrote it. A save to a different path than the baseline (a new vault or Save
+ * As, where the user already confirmed any overwrite) is not checked.
+ * @param filePath The vault path about to be written
+ */
+async function assertVaultUnchanged(filePath: string) {
+    if (!vaultBaseline || vaultBaseline.filePath !== path.resolve(filePath)) {
+        return
+    }
+
+    let current: Buffer
+    try {
+        current = await readFile(filePath)
+    } catch (ex) {
+        if ((ex as NodeJS.ErrnoException)?.code === 'ENOENT') {
+            throw new KryptPadError('The vault file was moved or deleted since it was opened.', KryptPadErrorCodes.VAULT_MISSING)
+        }
         throw ex
     }
+
+    if (hashVault(current) !== vaultBaseline.hash) {
+        throw new KryptPadError('The vault was changed by someone else, possibly on another device.', KryptPadErrorCodes.VAULT_CHANGED)
+    }
+}
+
+/**
+ * The folder holding a vault's encrypted attachments.
+ * @param vaultFileName The vault path
+ */
+function getAttachmentDirectory(vaultFileName: string): string {
+    return `${path.resolve(vaultFileName)}.files`
+}
+
+const ATTACHMENT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+/**
+ * The path of one encrypted attachment. The id comes from the renderer, so it
+ * must be a plain UUID and can't point outside the attachment folder.
+ * @param vaultFileName The vault path
+ * @param attachmentId The attachment's id
+ */
+function getAttachmentPath(vaultFileName: string, attachmentId: string): string {
+    if (typeof attachmentId !== 'string' || !ATTACHMENT_ID_PATTERN.test(attachmentId)) {
+        throw new Error('The attachment id is invalid.')
+    }
+
+    return path.join(getAttachmentDirectory(vaultFileName), `${attachmentId}.kpb`)
+}
+
+/**
+ * Decodes an attachment key sent by the renderer.
+ */
+function decodeAttachmentKey(key: string): Buffer {
+    if (typeof key !== 'string') {
+        throw new Error('The attachment key is invalid.')
+    }
+
+    return Buffer.from(key, 'base64')
 }
 
 /**
@@ -662,6 +821,7 @@ app.whenReady().then(async () => {
             }
 
             setUnlockedFileKey(fileKey)
+            setVaultBaseline(fileName, hashVault(encryptedData))
             ipcData.data = data
         } catch (ex) {
             ipcData.error = KryptPadError.fromError(ex)
@@ -672,7 +832,30 @@ app.whenReady().then(async () => {
         return ipcData
     })
 
-    handleTrusted('save-profile', async (_, fileName: string, profileData: string) => {
+    // Re-reads the vault with the session key, e.g. after another device saved it
+    handleTrusted('reload-profile', async (_, fileName: string) => {
+        const ipcData: IPCData<string> = {}
+
+        try {
+            assertUserSelectedPath(fileName)
+
+            if (!unlockedFileKey) {
+                throw new Error('No unlocked profile session is active.')
+            }
+
+            const encryptedData = await readFile(fileName)
+            ipcData.data = decryptFilePayloadWithKey(encryptedData, unlockedFileKey)
+            setVaultBaseline(fileName, hashVault(encryptedData))
+        } catch (ex) {
+            ipcData.error = KryptPadError.fromError(ex)
+
+            console.error(ipcData.error)
+        }
+
+        return ipcData
+    })
+
+    handleTrusted('save-profile', async (_, fileName: string, profileData: string, options?: { force?: boolean; hasAttachments?: boolean }) => {
         const ipcData: IPCData<string> = {}
 
         try {
@@ -684,9 +867,58 @@ app.whenReady().then(async () => {
 
             // Encrypt with the session key. This is synchronous, so a lock
             // arriving mid-save can't wipe the key out from under it.
-            const encryptedData = encryptFilePayload(profileData, unlockedFileKey)
+            const encryptedData = encryptFilePayload(profileData, unlockedFileKey, options?.hasAttachments === true)
+
+            // Refuse to overwrite changes made elsewhere unless the user chose to
+            if (options?.force !== true) {
+                await assertVaultUnchanged(fileName)
+            }
+
             // Write atomically so a crash mid-write can't corrupt the vault
             await writeFileAtomic(fileName, new Uint8Array(encryptedData))
+            setVaultBaseline(fileName, hashVault(encryptedData))
+        } catch (ex) {
+            ipcData.error = KryptPadError.fromError(ex)
+
+            console.error(ipcData.error)
+        }
+
+        return ipcData
+    })
+
+    // Writes the session's edits to a new "conflicted copy" file next to the
+    // vault, for when the vault was changed elsewhere and the session is being
+    // closed before the user could decide. The copy uses the session key and
+    // gets the attachments it references.
+    handleTrusted('save-conflict-copy', async (_, fileName: string, profileData: string, attachmentIds: string[]) => {
+        const ipcData: IPCData<string> = {}
+
+        try {
+            assertUserSelectedPath(fileName)
+
+            if (!unlockedFileKey) {
+                throw new Error('No unlocked profile session is active.')
+            }
+
+            const ids = Array.isArray(attachmentIds) ? attachmentIds : []
+            const encryptedData = encryptFilePayload(profileData, unlockedFileKey, ids.length > 0)
+
+            const parsed = path.parse(path.resolve(fileName))
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+            const copyPath = path.join(parsed.dir, `${parsed.name} (conflicted copy ${stamp})${parsed.ext}`)
+
+            if (ids.length) {
+                await mkdir(getAttachmentDirectory(copyPath), { recursive: true })
+                for (const id of ids) {
+                    await copyFileAtomic(getAttachmentPath(fileName, id), getAttachmentPath(copyPath, id)).catch((ex) => {
+                        // An attachment still syncing shouldn't cost the user their edits
+                        console.error(ex)
+                    })
+                }
+            }
+
+            await writeFileAtomic(copyPath, new Uint8Array(encryptedData))
+            ipcData.data = copyPath
         } catch (ex) {
             ipcData.error = KryptPadError.fromError(ex)
 
@@ -714,6 +946,8 @@ app.whenReady().then(async () => {
             }
 
             setUnlockedFileKey(fileKey)
+            // A new passphrase starts a new vault, which has no version yet
+            clearVaultBaseline()
         } catch (ex) {
             ipcData.error = KryptPadError.fromError(ex)
 
@@ -725,6 +959,182 @@ app.whenReady().then(async () => {
 
     handleTrusted('lock-profile', async () => {
         setUnlockedFileKey(null)
+        clearVaultBaseline()
+    })
+
+    // Lets the user pick files, encrypts each into the vault's attachment
+    // folder, and returns their metadata and keys for the profile. The source
+    // paths never pass through the renderer.
+    handleTrusted('add-attachments', async (_, vaultFileName: string) => {
+        const ipcData: IPCData<{ attachments: object[]; errors: string[] } | undefined> = {}
+
+        try {
+            assertUserSelectedPath(vaultFileName)
+
+            if (!unlockedFileKey || !win) {
+                throw new Error('No unlocked profile session is active.')
+            }
+
+            const result = await dialog.showOpenDialog(win, { properties: ['openFile', 'multiSelections'] })
+            if (result.canceled) {
+                return ipcData
+            }
+
+            const attachments: object[] = []
+            const errors: string[] = []
+            await mkdir(getAttachmentDirectory(vaultFileName), { recursive: true })
+
+            for (const sourcePath of result.filePaths) {
+                const id = crypto.randomUUID()
+                const key = createAttachmentKey()
+                try {
+                    const size = await encryptAttachmentFileAsync(sourcePath, getAttachmentPath(vaultFileName, id), id, key)
+                    attachments.push({ id, name: path.basename(sourcePath), size, key: key.toString('base64'), added: new Date().toISOString() })
+                } catch (ex) {
+                    errors.push(`${path.basename(sourcePath)}: ${KryptPadError.fromError(ex).message}`)
+                    console.error(ex)
+                } finally {
+                    key.fill(0)
+                }
+            }
+
+            ipcData.data = { attachments, errors }
+        } catch (ex) {
+            ipcData.error = KryptPadError.fromError(ex)
+
+            console.error(ipcData.error)
+        }
+
+        return ipcData
+    })
+
+    // Decrypts an attachment to a location the user picks
+    handleTrusted('save-attachment-as', async (_, vaultFileName: string, attachment: { id: string; name: string; key: string }) => {
+        const ipcData: IPCData<boolean> = {}
+
+        try {
+            assertUserSelectedPath(vaultFileName)
+
+            if (!unlockedFileKey || !win) {
+                throw new Error('No unlocked profile session is active.')
+            }
+
+            const sourcePath = getAttachmentPath(vaultFileName, attachment?.id)
+            const key = decodeAttachmentKey(attachment.key)
+            try {
+                const defaultName = path.basename(String(attachment.name || 'attachment'))
+                const result = await dialog.showSaveDialog(win, {
+                    defaultPath: path.join(app.getPath('downloads'), defaultName),
+                    properties: ['showOverwriteConfirmation']
+                })
+                if (result.canceled || !result.filePath) {
+                    ipcData.data = false
+                    return ipcData
+                }
+
+                await decryptAttachmentFileAsync(sourcePath, result.filePath, attachment.id, key)
+                ipcData.data = true
+            } finally {
+                key.fill(0)
+            }
+        } catch (ex) {
+            ipcData.error = KryptPadError.fromError(ex)
+
+            console.error(ipcData.error)
+        }
+
+        return ipcData
+    })
+
+    // Copies encrypted attachments to another vault's folder, for Save As.
+    // The keys live in the profile, so the files are copied as they are.
+    handleTrusted('copy-attachments', async (_, fromVaultFileName: string, toVaultFileName: string, attachmentIds: string[]) => {
+        const ipcData: IPCData<string[]> = {}
+
+        try {
+            assertUserSelectedPath(fromVaultFileName)
+            assertUserSelectedPath(toVaultFileName)
+
+            const missing: string[] = []
+            if (Array.isArray(attachmentIds) && attachmentIds.length > 0) {
+                await mkdir(getAttachmentDirectory(toVaultFileName), { recursive: true })
+
+                for (const id of attachmentIds) {
+                    const sourcePath = getAttachmentPath(fromVaultFileName, id)
+                    const destPath = getAttachmentPath(toVaultFileName, id)
+                    if (sourcePath === destPath) {
+                        continue
+                    }
+
+                    try {
+                        await copyFileAtomic(sourcePath, destPath)
+                    } catch (ex) {
+                        if ((ex as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+                            throw ex
+                        }
+                        missing.push(id)
+                    }
+                }
+            }
+
+            // Ids whose files were not on this device, e.g. still syncing
+            ipcData.data = missing
+        } catch (ex) {
+            ipcData.error = KryptPadError.fromError(ex)
+
+            console.error(ipcData.error)
+        }
+
+        return ipcData
+    })
+
+    // Removes encrypted attachment files no longer referenced by the profile.
+    // Only files older than the grace period are removed, because another
+    // device may hold a newer profile that still references them.
+    handleTrusted('compact-attachments', async (_, vaultFileName: string, referencedIds: string[]) => {
+        const ipcData: IPCData<number> = {}
+
+        try {
+            assertUserSelectedPath(vaultFileName)
+
+            if (!Array.isArray(referencedIds)) {
+                throw new Error('The attachment list is invalid.')
+            }
+
+            const directory = getAttachmentDirectory(vaultFileName)
+            const referenced = new Set(referencedIds)
+            let removed = 0
+
+            let entries: string[] = []
+            try {
+                entries = await readdir(directory)
+            } catch (ex) {
+                if ((ex as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+                    throw ex
+                }
+            }
+
+            for (const entry of entries) {
+                const id = entry.endsWith('.kpb') ? entry.slice(0, -'.kpb'.length) : ''
+                if (!ATTACHMENT_ID_PATTERN.test(id) || referenced.has(id)) {
+                    continue
+                }
+
+                const filePath = path.join(directory, entry)
+                if (Date.now() - (await stat(filePath)).mtimeMs >= ATTACHMENT_COMPACT_MIN_AGE) {
+                    await unlink(filePath)
+                    removed++
+                }
+            }
+
+            ipcData.data = removed
+        } catch (ex) {
+            ipcData.error = KryptPadError.fromError(ex)
+
+            console.error(ipcData.error)
+        }
+
+        return ipcData
     })
 
     // The renderer has finished persisting its pending edits, so the window
