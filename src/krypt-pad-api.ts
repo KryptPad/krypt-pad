@@ -143,8 +143,6 @@ class KryptPadAPI {
             return
         }
 
-        console.info(`Loaded file(s): `, selectedFile)
-
         // Close open file
         await this.closeFile()
 
@@ -212,8 +210,6 @@ class KryptPadAPI {
         if (selectedFile.canceled || !selectedFile.filePath) {
             return
         }
-
-        console.info(`Saved file(s): `, selectedFile)
 
         // Close open file
         await this.closeFile()
@@ -433,7 +429,7 @@ class KryptPadAPI {
                 }
                 await this.ipcBridge.saveProfile(fileName, plainText, saveOptions)
                 this._lastPersisted = { fileName, json: plainText }
-                console.info('Changes written to file.')
+                console.info('Changes written to vault.')
             }
             this.conflictPending.value = false
         } catch (ex) {

@@ -229,13 +229,12 @@ const menuItems = computed(() => {
         {
             title: 'File',
             items: [
-                { title: 'New File...', handler: kpAPI.createNewFileAsync, accelerator: 'Ctrl + N' },
-                // { title: 'Import KDF File' },
-                { title: 'Open File...', handler: kpAPI.openExistingFileAsync, accelerator: 'Ctrl + O' },
+                { title: 'New Vault...', handler: kpAPI.createNewFileAsync, accelerator: 'Ctrl + N' },
+                { title: 'Open Vault...', handler: kpAPI.openExistingFileAsync, accelerator: 'Ctrl + O' },
                 { divider: true },
-                { title: 'Close File', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened.value, accelerator: 'Ctrl + L' },
+                { title: 'Close Vault', handler: kpAPI.closeFile, enabled: kpAPI.fileOpened.value, accelerator: 'Ctrl + L' },
                 { divider: true },
-                { title: 'Save File As...', handler: () => kpAPI.saveProfileAsAsync(), enabled: kpAPI.fileOpened.value },
+                { title: 'Save Vault As...', handler: () => kpAPI.saveProfileAsAsync(), enabled: kpAPI.fileOpened.value },
                 { title: 'Clean Up Attachments...', handler: kpAPI.compactAttachmentsAsync, enabled: kpAPI.fileOpened.value },
                 { divider: true },
                 {
@@ -337,7 +336,7 @@ function resetIdleTimeout() {
                     // Check if the timer has reached 0
                     if (tempSecondsRemaining < 1) {
                         tempSecondsRemaining = 0
-                        // Close the file
+                        // Close the vault
                         void kpAPI.closeFile()
                     }
                 }
@@ -386,7 +385,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('touchstart', onUserActivity)
 })
 
-// Watch for file opened. This will start the timer if it is enabled
+// Watch for vault opened. This will start the timer if it is enabled
 watch(kpAPI.profile, (newProfileValue) => {
     if (newProfileValue) {
         // A profile is opened. Start the timeout.

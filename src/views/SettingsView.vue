@@ -26,7 +26,7 @@
                     <v-card-title>Security</v-card-title>
                     <v-card-text class="d-flex align-center">
                         <div class="mr-3">
-                            <v-checkbox v-model="enableTimeout" label="Automatically close file when idle for:"></v-checkbox>
+                            <v-checkbox v-model="enableTimeout" label="Automatically close vault when idle for:"></v-checkbox>
                         </div>
                         <div class="ml-auto" style="width: 10rem">
                             <v-text-field
